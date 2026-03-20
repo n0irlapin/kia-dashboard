@@ -595,6 +595,7 @@ function switchSeason(season){
 }
 
 
+function switchTab(tab){
   document.querySelectorAll('#tab-batter, #tab-pitcher').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-' + tab).classList.add('active');
   const btns = document.querySelectorAll('.tabs .tab-btn');
