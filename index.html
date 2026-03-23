@@ -280,14 +280,27 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans KR', s
     </div>
   </div>
 
-  <!-- KIA 선수 개인 상세 -->
-  <div class="card">
-    <div class="card-title">KIA 주요 선수 상세 스탯</div>
+  <!-- KIA 주전 선수 -->
+  <div class="card" style="margin-bottom:16px;">
+    <div class="card-title">KIA 주전 선수 스탯</div>
     <div class="tabs">
       <button class="tab-btn active" onclick="switchPlayerTab('hitters')">타자</button>
       <button class="tab-btn" onclick="switchPlayerTab('pitchers')">투수</button>
     </div>
     <div id="playerStatsContainer"></div>
+  </div>
+
+  <!-- 최애 선수 -->
+  <div class="card">
+    <div class="card-title" style="display:flex;align-items:center;gap:6px;">
+      <span>최애 선수</span>
+      <span style="font-size:11px;background:rgba(204,0,0,0.15);color:var(--kia-red);padding:2px 8px;border-radius:10px;">오선우 · 박재현 · 최지민</span>
+    </div>
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchFavTab('hitters')">타자</button>
+      <button class="tab-btn" onclick="switchFavTab('pitchers')">투수</button>
+    </div>
+    <div id="favStatsContainer"></div>
   </div>
 
   <div style="font-size: 11px; color: var(--muted); padding: 12px 0 4px;">* 2026 KBO 개막 전 (3월 28일 개막 예정). 시범경기 성적 기반. 최형우 → 삼성 이적 / 박찬호 → 두산 FA. 외국인: 네일·올러(투수 재계약) + 카스트로(타자 신규) + 데일(아시아쿼터, 내야수 신규). 김도영 유격수 전환.</div>
@@ -357,18 +370,23 @@ const SEASON_DATA = {
       { name:'나성범', num:'22', pos:'우익수', avg:'.400', hr:1, rbi:4, r:3, h:6, ab:15, bb:2, so:2, obp:'.471', slg:'.733', ops:'1.204' },
       { name:'카스트로', num:'53', pos:'지명타자', avg:'.357', hr:2, rbi:5, r:3, h:5, ab:14, bb:1, so:3, obp:'.400', slg:'.714', ops:'1.114' },
       { name:'김도영', num:'5', pos:'유격수', avg:'.333', hr:1, rbi:3, r:3, h:5, ab:15, bb:2, so:4, obp:'.412', slg:'.600', ops:'1.012' },
-      { name:'오선우', num:'56', pos:'1루수', avg:'.300', hr:0, rbi:2, r:3, h:3, ab:10, bb:0, so:2, obp:'.300', slg:'.300', ops:'.600' },
-      { name:'박재현', num:'15', pos:'외야수', avg:'.200', hr:0, rbi:0, r:1, h:1, ab:5, bb:0, so:1, obp:'.200', slg:'.200', ops:'.400' },
       { name:'데일', num:'58', pos:'유격수', avg:'.250', hr:0, rbi:1, r:1, h:2, ab:8, bb:1, so:2, obp:'.333', slg:'.250', ops:'.583' },
       { name:'김선빈', num:'3', pos:'2루수', avg:'.250', hr:0, rbi:1, r:1, h:3, ab:12, bb:2, so:1, obp:'.357', slg:'.250', ops:'.607' },
+      { name:'박민', num:'2', pos:'3루수', avg:'.400', hr:2, rbi:9, r:3, h:12, ab:30, bb:2, so:2, obp:'.424', slg:'.700', ops:'1.124' },
     ],
     kiaPitchers: [
-      { name:'양현종', num:'11', pos:'선발', era:'1.29', w:1, l:0, sv:0, ip:'7.0', h:4, bb:2, k:9, whip:'0.86', qs:2 },
-      { name:'올러', num:'49', pos:'선발', era:'2.08', w:1, l:1, sv:0, ip:'8.2', h:6, bb:3, k:10, whip:'1.04', qs:2 },
       { name:'네일', num:'47', pos:'선발', era:'4.50', w:0, l:1, sv:0, ip:'6.0', h:7, bb:2, k:5, whip:'1.50', qs:1 },
+      { name:'올러', num:'49', pos:'선발', era:'2.08', w:1, l:1, sv:0, ip:'8.2', h:6, bb:3, k:10, whip:'1.04', qs:2 },
+      { name:'양현종', num:'11', pos:'선발', era:'1.29', w:1, l:0, sv:0, ip:'7.0', h:4, bb:2, k:9, whip:'0.86', qs:2 },
+      { name:'이의리', num:'35', pos:'선발', era:'-', w:0, l:0, sv:0, ip:'0.0', h:0, bb:0, k:0, whip:'-', qs:0 },
+      { name:'김태형', num:'17', pos:'선발', era:'-', w:0, l:0, sv:0, ip:'0.0', h:0, bb:0, k:0, whip:'-', qs:0 },
+    ],
+    kiaFavHitters: [
+      { name:'오선우', num:'56', pos:'1루수', avg:'.300', hr:0, rbi:2, r:3, h:3, ab:10, bb:0, so:2, obp:'.300', slg:'.300', ops:'.600' },
+      { name:'박재현', num:'15', pos:'외야수', avg:'.200', hr:0, rbi:0, r:1, h:1, ab:5, bb:0, so:1, obp:'.200', slg:'.200', ops:'.400' },
+    ],
+    kiaFavPitchers: [
       { name:'최지민', num:'39', pos:'불펜', era:'0.00', w:0, l:0, sv:0, ip:'3.0', h:1, bb:0, k:3, whip:'0.33', qs:0 },
-      { name:'조상우', num:'1', pos:'마무리', era:'0.00', w:0, l:0, sv:1, ip:'2.0', h:1, bb:0, k:3, whip:'0.50', qs:0 },
-      { name:'김도현', num:'64', pos:'불펜', era:'2.25', w:0, l:0, sv:0, ip:'4.0', h:2, bb:1, k:5, whip:'0.75', qs:0 },
     ]
   },
   regular: {
@@ -397,18 +415,23 @@ const SEASON_DATA = {
       { name:'나성범', num:'22', pos:'우익수', avg:'-', hr:0, rbi:0, r:0, h:0, ab:0, bb:0, so:0, obp:'-', slg:'-', ops:'-' },
       { name:'카스트로', num:'53', pos:'지명타자', avg:'-', hr:0, rbi:0, r:0, h:0, ab:0, bb:0, so:0, obp:'-', slg:'-', ops:'-' },
       { name:'김도영', num:'5', pos:'유격수', avg:'-', hr:0, rbi:0, r:0, h:0, ab:0, bb:0, so:0, obp:'-', slg:'-', ops:'-' },
-      { name:'오선우', num:'56', pos:'1루수', avg:'-', hr:0, rbi:0, r:0, h:0, ab:0, bb:0, so:0, obp:'-', slg:'-', ops:'-' },
-      { name:'박재현', num:'15', pos:'외야수', avg:'-', hr:0, rbi:0, r:0, h:0, ab:0, bb:0, so:0, obp:'-', slg:'-', ops:'-' },
       { name:'데일', num:'58', pos:'유격수', avg:'-', hr:0, rbi:0, r:0, h:0, ab:0, bb:0, so:0, obp:'-', slg:'-', ops:'-' },
       { name:'김선빈', num:'3', pos:'2루수', avg:'-', hr:0, rbi:0, r:0, h:0, ab:0, bb:0, so:0, obp:'-', slg:'-', ops:'-' },
+      { name:'박민', num:'2', pos:'3루수', avg:'-', hr:0, rbi:0, r:0, h:0, ab:0, bb:0, so:0, obp:'-', slg:'-', ops:'-' },
     ],
     kiaPitchers: [
       { name:'네일', num:'47', pos:'선발', era:'-', w:0, l:0, sv:0, ip:'0.0', h:0, bb:0, k:0, whip:'-', qs:0 },
       { name:'올러', num:'49', pos:'선발', era:'-', w:0, l:0, sv:0, ip:'0.0', h:0, bb:0, k:0, whip:'-', qs:0 },
       { name:'양현종', num:'11', pos:'선발', era:'-', w:0, l:0, sv:0, ip:'0.0', h:0, bb:0, k:0, whip:'-', qs:0 },
+      { name:'이의리', num:'35', pos:'선발', era:'-', w:0, l:0, sv:0, ip:'0.0', h:0, bb:0, k:0, whip:'-', qs:0 },
+      { name:'김태형', num:'17', pos:'선발', era:'-', w:0, l:0, sv:0, ip:'0.0', h:0, bb:0, k:0, whip:'-', qs:0 },
+    ],
+    kiaFavHitters: [
+      { name:'오선우', num:'56', pos:'1루수', avg:'-', hr:0, rbi:0, r:0, h:0, ab:0, bb:0, so:0, obp:'-', slg:'-', ops:'-' },
+      { name:'박재현', num:'15', pos:'외야수', avg:'-', hr:0, rbi:0, r:0, h:0, ab:0, bb:0, so:0, obp:'-', slg:'-', ops:'-' },
+    ],
+    kiaFavPitchers: [
       { name:'최지민', num:'39', pos:'불펜', era:'-', w:0, l:0, sv:0, ip:'0.0', h:0, bb:0, k:0, whip:'-', qs:0 },
-      { name:'조상우', num:'1', pos:'마무리', era:'-', w:0, l:0, sv:0, ip:'0.0', h:0, bb:0, k:0, whip:'-', qs:0 },
-      { name:'김도현', num:'64', pos:'불펜', era:'-', w:0, l:0, sv:0, ip:'0.0', h:0, bb:0, k:0, whip:'-', qs:0 },
     ]
   }
 };
@@ -568,7 +591,62 @@ function showPlayerDetail(type, rank){
   det.classList.add('open');
 }
 
-let currentPlayerTab = 'hitters';
+let currentFavTab = 'hitters';
+function switchFavTab(tab){
+  currentFavTab = tab;
+  document.querySelectorAll('#favStatsContainer').forEach(() => {});
+  const favCard = document.getElementById('favStatsContainer').closest('.card');
+  favCard.querySelectorAll('.tab-btn').forEach((b, i) => {
+    b.classList.toggle('active', (i===0 && tab==='hitters') || (i===1 && tab==='pitchers'));
+  });
+  renderFavStats();
+}
+
+function renderFavStats(){
+  const container = document.getElementById('favStatsContainer');
+  if(!container) return;
+  if(currentFavTab==='hitters'){
+    const list = getData().kiaFavHitters || [];
+    container.innerHTML = `
+      <table class="player-table" style="table-layout:fixed;width:100%">
+        <thead><tr>
+          <th style="width:70px">선수</th><th style="width:40px">번호</th><th style="width:60px">포지션</th>
+          <th>타율</th><th>HR</th><th>타점</th><th>출루율</th><th>OPS</th>
+        </tr></thead>
+        <tbody>${list.length ? list.map(p=>`
+          <tr>
+            <td style="color:var(--kia-red);font-weight:500;white-space:nowrap">${p.name}</td>
+            <td style="color:var(--muted)">#${p.num}</td>
+            <td style="color:var(--muted);font-size:11px;white-space:nowrap">${p.pos}</td>
+            <td><strong>${p.avg}</strong></td>
+            <td>${p.hr}</td><td>${p.rbi}</td><td>${p.obp}</td>
+            <td style="color:#fbbf24">${p.ops}</td>
+          </tr>`).join('') : '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px;font-size:12px;">개막 후 데이터가 집계됩니다</td></tr>'}
+        </tbody>
+      </table>`;
+  } else {
+    const list = getData().kiaFavPitchers || [];
+    container.innerHTML = `
+      <table class="player-table" style="table-layout:fixed;width:100%">
+        <thead><tr>
+          <th style="width:70px">선수</th><th style="width:40px">번호</th><th style="width:60px">포지션</th>
+          <th>ERA</th><th>승</th><th>패</th><th>세이브</th><th>WHIP</th>
+        </tr></thead>
+        <tbody>${list.length ? list.map(p=>`
+          <tr>
+            <td style="color:var(--kia-red);font-weight:500;white-space:nowrap">${p.name}</td>
+            <td style="color:var(--muted)">#${p.num}</td>
+            <td style="color:var(--muted);font-size:11px;white-space:nowrap">${p.pos}</td>
+            <td><strong>${p.era}</strong></td>
+            <td>${p.w}</td><td>${p.l}</td><td>${p.sv}</td>
+            <td style="color:#fbbf24">${p.whip}</td>
+          </tr>`).join('') : '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px;font-size:12px;">개막 후 데이터가 집계됩니다</td></tr>'}
+        </tbody>
+      </table>`;
+  }
+}
+
+
 function switchPlayerTab(tab){
   currentPlayerTab = tab;
   document.querySelectorAll('.tabs .tab-btn').forEach((b,i) => {
@@ -720,6 +798,7 @@ function renderAll(){
   renderBatters();
   renderPitchers();
   renderPlayerStats();
+  renderFavStats();
   const now = new Date();
   document.getElementById('lastUpdate').textContent =
     '마지막 업데이트: ' + now.getFullYear() + '.' + pad(now.getMonth()+1) + '.' + pad(now.getDate()) + ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
