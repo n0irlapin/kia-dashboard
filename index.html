@@ -75,7 +75,8 @@ body { background: var(--bg); color: var(--text); font-family: 'Noto Sans KR', s
 .badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
 .badge.win { background: rgba(74,222,128,0.15); color: var(--win); }
 .badge.lose { background: rgba(248,113,113,0.15); color: var(--lose); }
-.badge.upcoming { background: rgba(96,165,250,0.15); color: #60a5fa; }
+.badge.draw { background: rgba(148,163,184,0.15); color: #94a3b8; }
+.result-item.draw { border-left-color: #94a3b8; }
 
 /* RANK TABLE */
 .rank-table { width: 100%; border-collapse: collapse; }
@@ -457,7 +458,7 @@ function renderResults(){
       <div class="r-date">${g.date}</div>
       <div class="r-teams">${g.opp} · ${g.venue}</div>
       <div class="r-score">${g.score}</div>
-      <span class="badge ${g.result}">${g.result==='win'?'승':g.result==='lose'?'패':'예정'}</span>
+      <span class="badge ${g.result}">${g.result==='win'?'승':g.result==='lose'?'패':g.result==='draw'?'무':'예정'}</span>
     </div>`).join('');
 }
 
