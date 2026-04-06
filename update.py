@@ -355,7 +355,7 @@ def build_html(standings, games, next_game, hitters, pitchers):
             r'(regular:\s*\{[\s\S]{0,2500}?kiaPitchers:\s*)\[[\s\S]*?\],',
             main_p, f"kiaPitchers({len(main_p)}명)")
         html = replace_block(html,
-            r'(regular:\s*\{[\s\S]{0,4500}?kiaFavPitchers:\s*)\[[\s\S]*?\],',
+            r'(regular:\s*\{[\s\S]{0,6000}?kiaFavPitchers:\s*)\[[\s\S]*?\],',
             fav_p, f"kiaFavPitchers({len(fav_p)}명)")
 
     html = re.sub(r'2026 KBO 리그 · .*? 기준', f'2026 KBO 리그 · {today} 기준', html)
