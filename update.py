@@ -19,21 +19,40 @@ VALID_TEAMS=set(TEAM_ENG_KOR.keys())
 VENUE_MAP={'GWANGJU':'광주','JAMSIL':'잠실','MUNHAK':'문학','DAEJEON':'대전',
            'DAEGU':'대구','SAJIK':'사직','CHANGWON':'창원','SUWON':'수원',
            'ICHEON':'이천','GOCHEOK':'고척'}
+
+# 선수 정보 (이름 → 번호, 포지션, KBO 선수ID)
+HITTER_INFO = {
+    '카스트로': {'num':'53','pos':'지명타자','pid':'56626'},
+    '나성범':   {'num':'22','pos':'우익수',  'pid':'62947'},
+    '김선빈':   {'num':'3', 'pos':'2루수',   'pid':'78603'},
+    '김도영':   {'num':'5', 'pos':'유격수',  'pid':'52605'},
+    '데일':     {'num':'58','pos':'유격수',  'pid':'56632'},
+    '박민':     {'num':'2', 'pos':'3루수',   'pid':'50657'},
+    '오선우':   {'num':'56','pos':'1루수',   'pid':'68009'},
+    '박재현':   {'num':'15','pos':'외야수',  'pid':'68177'},
+}
+PITCHER_INFO = {
+    '네일':   {'num':'47','pos':'선발','pid':'54640'},
+    '올러':   {'num':'49','pos':'선발','pid':'54642'},
+    '양현종': {'num':'11','pos':'선발','pid':'62401'},
+    '이의리': {'num':'35','pos':'선발','pid':'51648'},
+    '김태형': {'num':'17','pos':'선발','pid':'52108'},
+    '최지민': {'num':'39','pos':'불펜','pid':'67234'},
+}
+MAIN_HITTERS  = ['카스트로','나성범','김선빈','김도영','데일','박민']
+FAV_HITTERS   = ['오선우','박재현']
+MAIN_PITCHERS = ['네일','올러','양현종','이의리','김태형']
+FAV_PITCHERS  = ['최지민']
+
 def safe_int(s):
-    try: return int(float(str(s).strip()) if '.' in str(s) else str(s).strip() or 0)
+    try: return int(float(str(s).strip()) if s else 0)
     except: return 0
 
-PLAYER_NUM={'카스트로':'53','김선빈':'3','나성범':'22','데일':'58','김도영':'5',
-            '박민':'2','오선우':'56','박재현':'15','네일':'47','올러':'49',
-            '양현종':'11','이의리':'35','김태형':'17','최지민':'39','조상우':'1',
-            '김호령':'18','윤도현':'99','한준수':'27'}
-PLAYER_POS={'카스트로':'지명타자','김선빈':'2루수','나성범':'우익수','데일':'유격수',
-            '김도영':'유격수','박민':'3루수','오선우':'1루수','박재현':'외야수',
-            '김호령':'중견수','윤도현':'내야수','한준수':'포수'}
-MAIN_HITTERS=['카스트로','나성범','김선빈','김도영','데일','박민']
-FAV_HITTERS=['오선우','박재현']
-MAIN_PITCHERS=['네일','올러','양현종','이의리','김태형']
-FAV_PITCHERS=['최지민']
+def safe_avg(s):
+    try:
+        f = float(s)
+        return f".{int(f*1000):03d}" if f < 1 else f"{f:.3f}"
+    except: return '-'
 
 def get_standings():
     try:
@@ -75,7 +94,6 @@ def get_kia_schedule():
             mo,da,de=int(dm.group(1)),int(dm.group(2)),dm.group(3)
             dk=DAY_MAP.get(de,'')
             date_str=f"{cur_date[:5]}({dk})"
-            gdate=datetime(now.year,mo,da)
             found=False
             for i,txt in enumerate(col_t):
                 sm=re.match(r'^(\d+):(\d+)$',txt)
@@ -105,8 +123,8 @@ def get_kia_schedule():
                     for ct in col_o:
                         v=VENUE_MAP.get(ct.upper(),'')
                         if v: vname=v; break
-                    h,m=map(int,orig.split(':'))
-                    fdt=datetime(now.year,mo,da,h,m)
+                    h,m_=map(int,orig.split(':'))
+                    fdt=datetime(now.year,mo,da,h,m_)
                     fdt_str=fdt.strftime('%Y-%m-%dT%H:%M:%S')
                     if next_game is None and fdt>=now:
                         next_game={"date":fdt_str,"opponent":op_kor,"venue":vname,"home":vt=='홈'}
@@ -117,107 +135,62 @@ def get_kia_schedule():
         return games,next_game
     except Exception as e: print(f"schedule error: {e}"); return [],None
 
-def scrape_kia_hitters():
-    """KBO 전체 타자 기록에서 KIA 선수만 추출 - 모든 페이지 순회"""
-    base_url = "https://www.koreabaseball.com/Record/Player/HitterBasic/BasicOld.aspx"
-    kia = {}
-    
-    # 첫 페이지 가져오기 + ViewState 추출
+def fetch_hitter(name, info):
+    """선수 개인 페이지에서 타격 기록 조회"""
+    url = f"https://www.koreabaseball.com/Record/Player/HitterDetail/Basic.aspx?playerId={info['pid']}"
     try:
-        res = requests.get(base_url, headers=HEADERS, timeout=15)
+        res = requests.get(url, headers=HEADERS, timeout=10)
         soup = BeautifulSoup(res.text, "html.parser")
-        
-        # ViewState 추출
-        vs = soup.find('input', {'id': '__VIEWSTATE'})
-        vsgen = soup.find('input', {'id': '__VIEWSTATEGENERATOR'})
-        ev = soup.find('input', {'id': '__EVENTVALIDATION'})
-        
-        viewstate = vs['value'] if vs else ''
-        viewstategenerator = vsgen['value'] if vsgen else ''
-        eventvalidation = ev['value'] if ev else ''
-        
-        def parse_page(soup):
-            table = soup.select_one("table")
-            if not table: return
-            for row in table.select("tbody tr") or table.select("tr")[1:]:
+        # 정규시즌 기록 테이블 찾기
+        tables = soup.select("table")
+        for table in tables:
+            rows = table.select("tr")
+            for row in rows:
                 cols = row.select("td")
-                if len(cols) < 9: continue
-                team = cols[2].get_text(strip=True)
-                if team != 'KIA': continue
-                name = cols[1].get_text(strip=True)
-                try:
-                    ar = cols[3].get_text(strip=True)
-                    avg = f".{int(float(ar)*1000):03d}" if ar and ar not in ['-',''] else '-'
-                except: avg = '-'
-                kia[name] = {
-                    "avg": avg,
-                    "h":   int(cols[8].get_text(strip=True) or 0),
-                    "ab":  int(cols[6].get_text(strip=True) or 0),
-                    "r":   int(cols[7].get_text(strip=True) or 0),
-                    "hr":  int(cols[11].get_text(strip=True) or 0) if len(cols)>11 else 0,
-                    "rbi": int(cols[13].get_text(strip=True) or 0) if len(cols)>13 else 0,
-                }
-        
-        parse_page(soup)
-        
-        # 페이지 수 확인
-        # onclick에서 페이지 번호 추출
-        max_page = 1
-        for tag in soup.find_all(onclick=True):
-            m = re.search(r'btnNo(\d+)', tag.get('onclick',''))
-            if m: max_page = max(max_page, int(m.group(1)))
-        for a in soup.find_all('a', href=True):
-            m = re.search(r'btnNo(\d+)', a.get('href',''))
-            if m: max_page = max(max_page, int(m.group(1)))
-        print(f"  타자 총 {max_page}페이지")
-        
-        # 2페이지부터 POST로 가져오기
-        for page in range(2, max_page+1):
-            try:
-                post_data = {
-                    '__VIEWSTATE': viewstate,
-                    '__VIEWSTATEGENERATOR': viewstategenerator,
-                    '__EVENTVALIDATION': eventvalidation,
-                    '__EVENTTARGET': f'ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ucPager$btnNo{page}',
-                    '__EVENTARGUMENT': '',
-                }
-                r2 = requests.post(base_url, headers={**HEADERS, 'Content-Type': 'application/x-www-form-urlencoded'}, data=post_data, timeout=15)
-                s2 = BeautifulSoup(r2.text, "html.parser")
-                parse_page(s2)
-                # 다음 페이지용 ViewState 업데이트
-                vs2 = s2.find('input', {'id': '__VIEWSTATE'})
-                ev2 = s2.find('input', {'id': '__EVENTVALIDATION'})
-                if vs2: viewstate = vs2['value']
-                if ev2: eventvalidation = ev2['value']
-            except Exception as e:
-                print(f"  페이지 {page} 오류: {e}")
-                break
-                
-    except Exception as e: print(f"hitter error: {e}")
-    
-    print(f"KIA 타자: {len(kia)}명 - {list(kia.keys())}"); return kia
+                if not cols: continue
+                # 2026 정규시즌 행 찾기
+                row_text = row.get_text()
+                if '2026' in row_text and '정규' in row_text:
+                    if len(cols) >= 8:
+                        return {
+                            "avg": safe_avg(cols[3].get_text(strip=True)),
+                            "h":   safe_int(cols[7].get_text(strip=True)),
+                            "ab":  safe_int(cols[5].get_text(strip=True)),
+                            "r":   safe_int(cols[6].get_text(strip=True)),
+                            "hr":  safe_int(cols[10].get_text(strip=True)) if len(cols)>10 else 0,
+                            "rbi": safe_int(cols[12].get_text(strip=True)) if len(cols)>12 else 0,
+                        }
+        # 테이블에서 못 찾으면 첫번째 데이터 행 사용
+        for table in tables:
+            rows = table.select("tbody tr")
+            if rows:
+                cols = rows[0].select("td")
+                if len(cols) >= 8:
+                    return {
+                        "avg": safe_avg(cols[3].get_text(strip=True)),
+                        "h":   safe_int(cols[7].get_text(strip=True)),
+                        "ab":  safe_int(cols[5].get_text(strip=True)),
+                        "r":   safe_int(cols[6].get_text(strip=True)),
+                        "hr":  safe_int(cols[10].get_text(strip=True)) if len(cols)>10 else 0,
+                        "rbi": safe_int(cols[12].get_text(strip=True)) if len(cols)>12 else 0,
+                    }
+    except Exception as e:
+        print(f"  {name} 오류: {e}")
+    return None
 
-def scrape_kia_pitchers():
-    """KBO 전체 투수 기록에서 KIA 선수만 추출 - 모든 페이지"""
-    base_url = "https://www.koreabaseball.com/Record/Player/PitcherBasic/BasicOld.aspx"
-    kia = {}
+def fetch_pitcher(name, info):
+    """선수 개인 페이지에서 투구 기록 조회"""
+    url = f"https://www.koreabaseball.com/Record/Player/PitcherDetail/Basic.aspx?playerId={info['pid']}"
     try:
-        res = requests.get(base_url, headers=HEADERS, timeout=15)
+        res = requests.get(url, headers=HEADERS, timeout=10)
         soup = BeautifulSoup(res.text, "html.parser")
-        vs = soup.find('input', {'id': '__VIEWSTATE'})
-        ev = soup.find('input', {'id': '__EVENTVALIDATION'})
-        viewstate = vs['value'] if vs else ''
-        eventvalidation = ev['value'] if ev else ''
-        
-        def parse_page(soup):
-            table = soup.select_one("table")
-            if not table: return
-            for row in table.select("tbody tr") or table.select("tr")[1:]:
+        tables = soup.select("table")
+        for table in tables:
+            for row in table.select("tbody tr"):
                 cols = row.select("td")
-                if len(cols)<10 or cols[2].get_text(strip=True)!='KIA': continue
-                name = cols[1].get_text(strip=True)
-                kia[name] = {
-                    "era":  cols[3].get_text(strip=True),
+                if len(cols) < 10: continue
+                return {
+                    "era":  cols[3].get_text(strip=True) or '-',
                     "w":    safe_int(cols[5].get_text(strip=True)),
                     "l":    safe_int(cols[6].get_text(strip=True)),
                     "sv":   safe_int(cols[7].get_text(strip=True)),
@@ -227,126 +200,107 @@ def scrape_kia_pitchers():
                     "k":    safe_int(cols[15].get_text(strip=True)) if len(cols)>15 else 0,
                     "whip": cols[18].get_text(strip=True) if len(cols)>18 else '-',
                 }
-        
-        parse_page(soup)
-        max_page = 1
-        for tag in soup.find_all(onclick=True):
-            m = re.search(r'btnNo(\d+)', tag.get('onclick',''))
-            if m: max_page = max(max_page, int(m.group(1)))
-        
-        for page in range(2, max_page+1):
-            try:
-                post_data = {
-                    '__VIEWSTATE': viewstate,
-                    '__EVENTVALIDATION': eventvalidation,
-                    '__EVENTTARGET': f'ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ucPager$btnNo{page}',
-                    '__EVENTARGUMENT': '',
-                }
-                r2 = requests.post(base_url, headers={**HEADERS, 'Content-Type': 'application/x-www-form-urlencoded'}, data=post_data, timeout=15)
-                s2 = BeautifulSoup(r2.text, "html.parser")
-                parse_page(s2)
-                vs2 = s2.find('input', {'id': '__VIEWSTATE'})
-                ev2 = s2.find('input', {'id': '__EVENTVALIDATION'})
-                if vs2: viewstate = vs2['value']
-                if ev2: eventvalidation = ev2['value']
-            except Exception as e: print(f"  투수 페이지 {page} 오류: {e}"); break
-                
-    except Exception as e: print(f"pitcher error: {e}")
-    print(f"KIA 투수: {len(kia)}명 - {list(kia.keys())}"); return kia
+    except Exception as e:
+        print(f"  {name} 오류: {e}")
+    return None
 
-def mh(n,d): return {"name":n,"num":PLAYER_NUM.get(n,'-'),"pos":PLAYER_POS.get(n,'-'),"avg":d.get("avg",'-'),"hr":d.get("hr",0),"rbi":d.get("rbi",0),"r":d.get("r",0),"h":d.get("h",0),"ab":d.get("ab",0),"bb":0,"so":0,"obp":'-',"slg":'-',"ops":'-'}
-def me(n): return {"name":n,"num":PLAYER_NUM.get(n,'-'),"pos":PLAYER_POS.get(n,'-'),"avg":'-',"hr":0,"rbi":0,"r":0,"h":0,"ab":0,"bb":0,"so":0,"obp":'-',"slg":'-',"ops":'-'}
-def mp(n,d): pos="불펜" if n in FAV_PITCHERS else "선발"; return {"name":n,"num":PLAYER_NUM.get(n,'-'),"pos":pos,"era":d.get("era",'-'),"w":d.get("w",0),"l":d.get("l",0),"sv":d.get("sv",0),"ip":d.get("ip",'0.0'),"h":d.get("h",0),"bb":d.get("bb",0),"k":d.get("k",0),"whip":d.get("whip",'-'),"qs":0}
-def mpe(n): pos="불펜" if n in FAV_PITCHERS else "선발"; return {"name":n,"num":PLAYER_NUM.get(n,'-'),"pos":pos,"era":'-',"w":0,"l":0,"sv":0,"ip":'0.0',"h":0,"bb":0,"k":0,"whip":'-',"qs":0}
+def scrape_all_hitters():
+    all_names = list(set(MAIN_HITTERS + FAV_HITTERS))
+    result = {}
+    for name in all_names:
+        info = HITTER_INFO.get(name)
+        if not info: continue
+        data = fetch_hitter(name, info)
+        if data:
+            result[name] = data
+            print(f"  타자 {name}: {data['avg']}")
+        else:
+            print(f"  타자 {name}: 기록 없음")
+    print(f"KIA 타자: {len(result)}명")
+    return result
+
+def scrape_all_pitchers():
+    all_names = list(set(MAIN_PITCHERS + FAV_PITCHERS))
+    result = {}
+    for name in all_names:
+        info = PITCHER_INFO.get(name)
+        if not info: continue
+        data = fetch_pitcher(name, info)
+        if data:
+            result[name] = data
+            print(f"  투수 {name}: ERA {data['era']}")
+        else:
+            print(f"  투수 {name}: 기록 없음")
+    print(f"KIA 투수: {len(result)}명")
+    return result
+
+def mh(n,d,info): return {"name":n,"num":info['num'],"pos":info['pos'],"avg":d.get("avg",'-'),"hr":d.get("hr",0),"rbi":d.get("rbi",0),"r":d.get("r",0),"h":d.get("h",0),"ab":d.get("ab",0),"bb":0,"so":0,"obp":'-',"slg":'-',"ops":'-'}
+def me(n,info): return {"name":n,"num":info['num'],"pos":info['pos'],"avg":'-',"hr":0,"rbi":0,"r":0,"h":0,"ab":0,"bb":0,"so":0,"obp":'-',"slg":'-',"ops":'-'}
+def mp(n,d,info): return {"name":n,"num":info['num'],"pos":info['pos'],"era":d.get("era",'-'),"w":d.get("w",0),"l":d.get("l",0),"sv":d.get("sv",0),"ip":d.get("ip",'0.0'),"h":d.get("h",0),"bb":d.get("bb",0),"k":d.get("k",0),"whip":d.get("whip",'-'),"qs":0}
+def mpe(n,info): return {"name":n,"num":info['num'],"pos":info['pos'],"era":'-',"w":0,"l":0,"sv":0,"ip":'0.0',"h":0,"bb":0,"k":0,"whip":'-',"qs":0}
 
 def replace_in_regular(html, key, new_json_str):
-    """regular: 섹션 안에서만 key를 찾아서 교체"""
-    # regular: 블록 끝 위치 먼저 찾기
     reg_start = html.find('  regular: {')
     if reg_start == -1: reg_start = html.find('  regular:{')
     if reg_start == -1: print(f"⚠️ regular: 섹션 없음"); return html
-    
-    # regular: 블록의 끝 찾기 (중첩 중괄호 추적)
     depth = 0; reg_end = reg_start
     for i in range(reg_start, len(html)):
         if html[i] == '{': depth += 1
         elif html[i] == '}':
             depth -= 1
             if depth == 0: reg_end = i; break
-    
-    # regular 섹션만 추출
     regular_block = html[reg_start:reg_end+1]
-    
-    # key 찾기
     key_search = f'    {key}:'
     key_idx = regular_block.find(key_search)
-    if key_idx == -1:
-        key_search = f'    {key} :'
-        key_idx = regular_block.find(key_search)
-    if key_idx == -1:
-        print(f"⚠️ {key} 패턴 실패 (regular 섹션 내)"); return html
-    
-    # [ 또는 { 시작
+    if key_idx == -1: print(f"⚠️ {key} 패턴 실패"); return html
     colon_pos = regular_block.find(':', key_idx + len(key_search) - 1)
-    start_bracket = regular_block.find('[', colon_pos)
-    start_brace   = regular_block.find('{', colon_pos)
-    if start_bracket == -1: start = start_brace
-    elif start_brace  == -1: start = start_bracket
-    else: start = min(start_bracket, start_brace)
-    
+    sb = regular_block.find('[', colon_pos)
+    sc = regular_block.find('{', colon_pos)
+    if sb == -1: start = sc
+    elif sc == -1: start = sb
+    else: start = min(sb, sc)
     if start == -1: print(f"⚠️ {key} 시작 괄호 없음"); return html
-    
-    # 닫는 괄호
-    open_ch = regular_block[start]
-    close_ch = ']' if open_ch == '[' else '}'
+    oc = regular_block[start]
+    cc = ']' if oc == '[' else '}'
     depth2 = 0; end = start
     for i in range(start, len(regular_block)):
-        if regular_block[i] == open_ch: depth2 += 1
-        elif regular_block[i] == close_ch:
+        if regular_block[i] == oc: depth2 += 1
+        elif regular_block[i] == cc:
             depth2 -= 1
             if depth2 == 0: end = i; break
-    
-    # 교체
     new_block = regular_block[:start] + new_json_str + regular_block[end+1:]
-    result = html[:reg_start] + new_block + html[reg_end+1:]
     print(f"✅ {key} 교체")
-    return result
+    return html[:reg_start] + new_block + html[reg_end+1:]
 
 def build_html(standings, games, next_game, hitters, pitchers):
     with open("index.html","r",encoding="utf-8") as f: html=f.read()
     now=datetime.now(); today=now.strftime("%Y.%m.%d")
-
     if standings:
-        html = replace_in_regular(html, 'standings', json.dumps(standings, ensure_ascii=False))
-
+        html=replace_in_regular(html,'standings',json.dumps(standings,ensure_ascii=False))
     if games:
-        done = [g for g in games if g['result']!='upcoming'][-10:]
-        upcoming = [g for g in games if g['result']=='upcoming'][:3]
-        html = replace_in_regular(html, 'recentGames', json.dumps(done+upcoming, ensure_ascii=False))
-
+        done=[g for g in games if g['result']!='upcoming'][-10:]
+        upcoming=[g for g in games if g['result']=='upcoming'][:3]
+        html=replace_in_regular(html,'recentGames',json.dumps(done+upcoming,ensure_ascii=False))
     if next_game:
-        html = replace_in_regular(html, 'nextGame', json.dumps(next_game, ensure_ascii=False))
-
+        html=replace_in_regular(html,'nextGame',json.dumps(next_game,ensure_ascii=False))
     if hitters:
-        main_h = [mh(n,hitters[n]) if n in hitters else me(n) for n in MAIN_HITTERS]
-        fav_h  = [mh(n,hitters[n]) if n in hitters else me(n) for n in FAV_HITTERS]
-        html = replace_in_regular(html, 'kiaHitters', json.dumps(main_h, ensure_ascii=False))
-        html = replace_in_regular(html, 'kiaFavHitters', json.dumps(fav_h, ensure_ascii=False))
-
+        main_h=[mh(n,hitters[n],HITTER_INFO[n]) if n in hitters else me(n,HITTER_INFO[n]) for n in MAIN_HITTERS if n in HITTER_INFO]
+        fav_h =[mh(n,hitters[n],HITTER_INFO[n]) if n in hitters else me(n,HITTER_INFO[n]) for n in FAV_HITTERS  if n in HITTER_INFO]
+        html=replace_in_regular(html,'kiaHitters',json.dumps(main_h,ensure_ascii=False))
+        html=replace_in_regular(html,'kiaFavHitters',json.dumps(fav_h,ensure_ascii=False))
     if pitchers:
-        main_p = [mp(n,pitchers[n]) if n in pitchers else mpe(n) for n in MAIN_PITCHERS]
-        fav_p  = [mp(n,pitchers[n]) if n in pitchers else mpe(n) for n in FAV_PITCHERS]
-        html = replace_in_regular(html, 'kiaPitchers', json.dumps(main_p, ensure_ascii=False))
-        html = replace_in_regular(html, 'kiaFavPitchers', json.dumps(fav_p, ensure_ascii=False))
-
-    html = re.sub(r'2026 KBO 리그 · .*? 기준', f'2026 KBO 리그 · {today} 기준', html)
+        main_p=[mp(n,pitchers[n],PITCHER_INFO[n]) if n in pitchers else mpe(n,PITCHER_INFO[n]) for n in MAIN_PITCHERS if n in PITCHER_INFO]
+        fav_p =[mp(n,pitchers[n],PITCHER_INFO[n]) if n in pitchers else mpe(n,PITCHER_INFO[n]) for n in FAV_PITCHERS  if n in PITCHER_INFO]
+        html=replace_in_regular(html,'kiaPitchers',json.dumps(main_p,ensure_ascii=False))
+        html=replace_in_regular(html,'kiaFavPitchers',json.dumps(fav_p,ensure_ascii=False))
+    html=re.sub(r'2026 KBO 리그 · .*? 기준',f'2026 KBO 리그 · {today} 기준',html)
     with open("index.html","w",encoding="utf-8") as f: f.write(html)
     print(f"✅ index.html 완료 ({today})")
 
 if __name__=="__main__":
     print("📡 KBO 데이터 수집 중...")
-    standings         = get_standings()
-    games, next_game  = get_kia_schedule()
-    hitters           = scrape_kia_hitters()
-    pitchers          = scrape_kia_pitchers()
-    build_html(standings, games, next_game, hitters, pitchers)
+    standings        = get_standings()
+    games,next_game  = get_kia_schedule()
+    hitters          = scrape_all_hitters()
+    pitchers         = scrape_all_pitchers()
+    build_html(standings,games,next_game,hitters,pitchers)
