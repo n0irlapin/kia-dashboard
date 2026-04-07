@@ -115,7 +115,7 @@ def get_kia_schedule():
 
 def scrape_kia_hitters():
     """KBO 전체 타자 기록에서 KIA 선수만 추출 - 모든 페이지 순회"""
-    base_url = "https://www.koreabaseball.com/Record/Player/HitterBasic/Basic1.aspx"
+    base_url = "https://www.koreabaseball.com/Record/Player/HitterBasic/BasicOld.aspx"
     kia = {}
     
     # 첫 페이지 가져오기 + ViewState 추출
@@ -193,7 +193,7 @@ def scrape_kia_hitters():
 
 def scrape_kia_pitchers():
     """KBO 전체 투수 기록에서 KIA 선수만 추출 - 모든 페이지"""
-    base_url = "https://www.koreabaseball.com/Record/Player/PitcherBasic/Basic1.aspx"
+    base_url = "https://www.koreabaseball.com/Record/Player/PitcherBasic/BasicOld.aspx"
     kia = {}
     try:
         res = requests.get(base_url, headers=HEADERS, timeout=15)
