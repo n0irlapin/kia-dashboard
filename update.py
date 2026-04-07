@@ -19,6 +19,10 @@ VALID_TEAMS=set(TEAM_ENG_KOR.keys())
 VENUE_MAP={'GWANGJU':'광주','JAMSIL':'잠실','MUNHAK':'문학','DAEJEON':'대전',
            'DAEGU':'대구','SAJIK':'사직','CHANGWON':'창원','SUWON':'수원',
            'ICHEON':'이천','GOCHEOK':'고척'}
+def safe_int(s):
+    try: return int(float(str(s).strip()) if '.' in str(s) else str(s).strip() or 0)
+    except: return 0
+
 PLAYER_NUM={'카스트로':'53','김선빈':'3','나성범':'22','데일':'58','김도영':'5',
             '박민':'2','오선우':'56','박재현':'15','네일':'47','올러':'49',
             '양현종':'11','이의리':'35','김태형':'17','최지민':'39','조상우':'1',
@@ -157,12 +161,14 @@ def scrape_kia_hitters():
         parse_page(soup)
         
         # 페이지 수 확인
-        pager = soup.select('.pager a, .paginate a, [id*="ucPager"] a')
-        page_nums = []
-        for a in pager:
-            try: page_nums.append(int(a.get_text(strip=True)))
-            except: pass
-        max_page = max(page_nums) if page_nums else 1
+        # onclick에서 페이지 번호 추출
+        max_page = 1
+        for tag in soup.find_all(onclick=True):
+            m = re.search(r'btnNo(\d+)', tag.get('onclick',''))
+            if m: max_page = max(max_page, int(m.group(1)))
+        for a in soup.find_all('a', href=True):
+            m = re.search(r'btnNo(\d+)', a.get('href',''))
+            if m: max_page = max(max_page, int(m.group(1)))
         print(f"  타자 총 {max_page}페이지")
         
         # 2페이지부터 POST로 가져오기
@@ -212,23 +218,21 @@ def scrape_kia_pitchers():
                 name = cols[1].get_text(strip=True)
                 kia[name] = {
                     "era":  cols[3].get_text(strip=True),
-                    "w":    int(cols[5].get_text(strip=True) or 0),
-                    "l":    int(cols[6].get_text(strip=True) or 0),
-                    "sv":   int(cols[7].get_text(strip=True) or 0),
+                    "w":    safe_int(cols[5].get_text(strip=True)),
+                    "l":    safe_int(cols[6].get_text(strip=True)),
+                    "sv":   safe_int(cols[7].get_text(strip=True)),
                     "ip":   cols[10].get_text(strip=True) if len(cols)>10 else '0.0',
-                    "h":    int(cols[11].get_text(strip=True) or 0) if len(cols)>11 else 0,
-                    "bb":   int(cols[13].get_text(strip=True) or 0) if len(cols)>13 else 0,
-                    "k":    int(cols[15].get_text(strip=True) or 0) if len(cols)>15 else 0,
+                    "h":    safe_int(cols[11].get_text(strip=True)) if len(cols)>11 else 0,
+                    "bb":   safe_int(cols[13].get_text(strip=True)) if len(cols)>13 else 0,
+                    "k":    safe_int(cols[15].get_text(strip=True)) if len(cols)>15 else 0,
                     "whip": cols[18].get_text(strip=True) if len(cols)>18 else '-',
                 }
         
         parse_page(soup)
-        pager = soup.select('[id*="ucPager"] a')
-        page_nums = []
-        for a in pager:
-            try: page_nums.append(int(a.get_text(strip=True)))
-            except: pass
-        max_page = max(page_nums) if page_nums else 1
+        max_page = 1
+        for tag in soup.find_all(onclick=True):
+            m = re.search(r'btnNo(\d+)', tag.get('onclick',''))
+            if m: max_page = max(max_page, int(m.group(1)))
         
         for page in range(2, max_page+1):
             try:
