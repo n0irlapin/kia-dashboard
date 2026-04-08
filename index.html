@@ -425,7 +425,7 @@ def build_html(standings, games, next_game, hitters, pitchers, batters=None, top
             "let currentSeason = 'regular'; // 정규시즌 고정",
             "let currentSeason = 'regular'; // 정규시즌 고정\nlet currentPlayerTab = 'hitters';\nlet currentFavTab = 'hitters';"
         )
-    html=re.sub(r'2026 KBO 리그 · .*? 기준',f'2026 KBO 리그 · {today} 기준',html)
+    html=re.sub(r'2026 KBO 리그 · 2026.04.08 기준',f'2026 KBO 리그 · 2026.04.08 기준',html)
     with open("index.html","w",encoding="utf-8") as f: f.write(html)
     print(f"✅ index.html 완료 ({today})")
 
