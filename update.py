@@ -359,9 +359,11 @@ def mp(n,d,info): return {"name":n,"num":info['num'],"pos":info['pos'],"era":d.g
 def mpe(n,info): return {"name":n,"num":info['num'],"pos":info['pos'],"era":'-',"w":0,"l":0,"sv":0,"ip":'0.0',"h":0,"bb":0,"k":0,"whip":'-',"qs":0}
 
 def replace_in_regular(html, key, new_json_str):
-    reg_start = html.find('  regular: {')
-    if reg_start == -1: reg_start = html.find('  regular:{')
-    if reg_start == -1: print(f"⚠️ regular: 섹션 없음"); return html
+    # 공백 무관하게 regular: 섹션 찾기
+    import re as _re
+    m = _re.search(r'regular\s*:\s*\{', html)
+    if not m: print(f"⚠️ regular: 섹션 없음"); return html
+    reg_start = m.start()
     depth = 0; reg_end = reg_start
     for i in range(reg_start, len(html)):
         if html[i] == '{': depth += 1
@@ -419,6 +421,12 @@ def build_html(standings, games, next_game, hitters, pitchers, batters=None, top
         html=replace_in_regular(html,'batters',json.dumps(batters,ensure_ascii=False))
     if top_pitchers:
         html=replace_in_regular(html,'pitchers',json.dumps(top_pitchers,ensure_ascii=False))
+    # JS 변수 초기화 패치
+    if 'let currentPlayerTab' not in html:
+        html = html.replace(
+            "let currentSeason = 'regular'; // 정규시즌 고정",
+            "let currentSeason = 'regular'; // 정규시즌 고정\nlet currentPlayerTab = 'hitters';\nlet currentFavTab = 'hitters';"
+        )
     html=re.sub(r'2026 KBO 리그 · .*? 기준',f'2026 KBO 리그 · {today} 기준',html)
     with open("index.html","w",encoding="utf-8") as f: f.write(html)
     print(f"✅ index.html 완료 ({today})")
