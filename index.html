@@ -1,441 +1,421 @@
-import requests
-from bs4 import BeautifulSoup
-import json
-import re
-from datetime import datetime
-
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Accept-Language": "ko-KR,ko;q=0.9",
-    "Referer": "https://www.koreabaseball.com/"
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KIA 타이거즈 대시보드</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+:root {
+  --kia-red: #CC0000;
+  --kia-dark: #8B0000;
+  --bg: #0f0f0f;
+  --bg2: #1a1a1a;
+  --bg3: #242424;
+  --border: rgba(255,255,255,0.08);
+  --text: #f0f0f0;
+  --muted: #888;
+  --win: #4ade80;
+  --lose: #f87171;
 }
-TEAM_ENG_KOR = {
-    'KIA':'KIA 타이거즈','LG':'LG 트윈스','SAMSUNG':'삼성 라이온즈',
-    'HANWHA':'한화 이글스','SSG':'SSG 랜더스','NC':'NC 다이노스',
-    'KT':'KT 위즈','LOTTE':'롯데 자이언츠','DOOSAN':'두산 베어스','KIWOOM':'키움 히어로즈'
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Noto Sans KR', sans-serif; font-size: 14px; line-height: 1.6; min-height: 100vh; }
+.header { background: linear-gradient(135deg, #1a0000 0%, #2d0000 40%, #1a0000 100%); border-bottom: 1px solid var(--kia-red); padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+.header-left { display: flex; align-items: center; gap: 16px; }
+.tiger-icon { width: 48px; height: 48px; background: var(--kia-red); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+.header-title { font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 2px; color: #fff; }
+.header-sub { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: -2px; }
+.refresh-btn { background: rgba(204,0,0,0.2); border: 1px solid rgba(204,0,0,0.4); color: var(--kia-red); padding: 8px 18px; border-radius: 20px; cursor: pointer; font-size: 12px; font-family: 'Noto Sans KR', sans-serif; transition: all 0.2s; }
+.refresh-btn:hover { background: rgba(204,0,0,0.35); }
+.container { max-width: 1100px; margin: 0 auto; padding: 24px 20px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; }
+.card-title { font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.card-title::before { content: ''; display: inline-block; width: 3px; height: 12px; background: var(--kia-red); border-radius: 2px; }
+.countdown-card { background: linear-gradient(135deg, #1a0000, #2a0808); border: 1px solid rgba(204,0,0,0.3); border-radius: 12px; padding: 20px; text-align: center; position: relative; overflow: hidden; }
+.countdown-card::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 50% 0%, rgba(204,0,0,0.12) 0%, transparent 70%); }
+.countdown-match { font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 6px; }
+.countdown-teams { font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 2px; color: #fff; margin-bottom: 12px; }
+.countdown-teams span { color: var(--kia-red); }
+.countdown-nums { display: flex; justify-content: center; gap: 12px; }
+.cd-unit { text-align: center; }
+.cd-num { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 10px 14px; font-family: 'Bebas Neue', sans-serif; font-size: 32px; color: #fff; min-width: 56px; display: block; }
+.cd-label { font-size: 10px; color: var(--muted); margin-top: 4px; }
+.cd-sep { font-size: 28px; color: var(--kia-red); line-height: 1; margin-top: 6px; }
+.stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.stat-item { background: var(--bg3); border-radius: 10px; padding: 14px 16px; }
+.stat-item .label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+.stat-item .value { font-size: 22px; font-weight: 700; color: #fff; }
+.stat-item .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.stat-item.highlight .value { color: var(--kia-red); }
+.result-list { display: flex; flex-direction: column; gap: 8px; }
+.result-item { background: var(--bg3); border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; gap: 12px; border-left: 3px solid transparent; }
+.result-item.win { border-left-color: var(--win); }
+.result-item.lose { border-left-color: var(--lose); }
+.result-item.upcoming { border-left-color: #60a5fa; }
+.result-item.draw { border-left-color: #94a3b8; }
+.r-date { font-size: 11px; color: var(--muted); min-width: 70px; }
+.r-teams { flex: 1; font-size: 13px; }
+.r-score { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: #fff; min-width: 60px; text-align: center; }
+.badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
+.badge.win { background: rgba(74,222,128,0.15); color: var(--win); }
+.badge.lose { background: rgba(248,113,113,0.15); color: var(--lose); }
+.badge.draw { background: rgba(148,163,184,0.15); color: #94a3b8; }
+.rank-table { width: 100%; border-collapse: collapse; }
+.rank-table th { font-size: 10px; color: var(--muted); text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); font-weight: 400; text-transform: uppercase; letter-spacing: 0.05em; }
+.rank-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.rank-table tr:last-child td { border-bottom: none; }
+.rank-table tr.kia-row td { background: rgba(204,0,0,0.08); color: var(--kia-red); font-weight: 500; }
+.rank-num { display: inline-flex; width: 22px; height: 22px; background: var(--bg3); border-radius: 50%; align-items: center; justify-content: center; font-size: 11px; color: var(--muted); }
+.rank-num.top { background: var(--kia-red); color: #fff; }
+.team-dot { display: inline-block; width: 6px; height: 6px; background: var(--kia-red); border-radius: 50%; margin-right: 5px; }
+.player-table { width: 100%; border-collapse: collapse; }
+.player-table th { font-size: 10px; color: var(--muted); text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); font-weight: 400; }
+.player-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.player-table tr:last-child td { border-bottom: none; }
+.player-table tr.kia-p td { color: var(--kia-red); font-weight: 500; }
+.player-table td:first-child { color: var(--muted); font-size: 12px; width: 30px; }
+.kia-tag { background: rgba(204,0,0,0.15); color: var(--kia-red); font-size: 9px; padding: 1px 6px; border-radius: 8px; margin-left: 4px; }
+.tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+.tab-btn { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 5px 14px; border-radius: 20px; font-size: 12px; cursor: pointer; font-family: 'Noto Sans KR', sans-serif; transition: all 0.2s; }
+.tab-btn.active { background: var(--kia-red); border-color: var(--kia-red); color: #fff; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.notif-bar { background: rgba(204,0,0,0.12); border: 1px solid rgba(204,0,0,0.25); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; font-size: 13px; }
+.notif-dot { width: 8px; height: 8px; background: var(--kia-red); border-radius: 50%; animation: pulse 1.5s ease-in-out infinite; flex-shrink: 0; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.3)} }
+.notif-btn { margin-left: auto; background: rgba(204,0,0,0.2); border: 1px solid rgba(204,0,0,0.3); color: var(--kia-red); padding: 5px 14px; border-radius: 16px; font-size: 11px; cursor: pointer; font-family: 'Noto Sans KR', sans-serif; white-space: nowrap; }
+.season-btn { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 7px 20px; border-radius: 20px; font-size: 14px; cursor: pointer; font-family: 'Noto Sans KR', sans-serif; transition: all 0.2s; font-weight: 400; }
+.season-btn.active { background: var(--kia-red); border-color: var(--kia-red); color: #fff; font-weight: 500; }
+.last-update { font-size: 11px; color: var(--muted); text-align: right; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (max-width: 700px) {
+  .grid { grid-template-columns: 1fr; }
+  .stat-grid { grid-template-columns: 1fr 1fr; }
 }
-DAY_MAP={'MON':'월','TUE':'화','WED':'수','THU':'목','FRI':'금','SAT':'토','SUN':'일'}
-VALID_TEAMS=set(TEAM_ENG_KOR.keys())
-VENUE_MAP={'GWANGJU':'광주','JAMSIL':'잠실','MUNHAK':'문학','DAEJEON':'대전',
-           'DAEGU':'대구','SAJIK':'사직','CHANGWON':'창원','SUWON':'수원',
-           'ICHEON':'이천','GOCHEOK':'고척'}
+</style>
+</head>
+<body>
 
-# 선수 정보 (이름 → 번호, 포지션, KBO 선수ID)
-HITTER_INFO = {
-    '카스트로': {'num':'53','pos':'지명타자','pid':'56626'},
-    '나성범':   {'num':'22','pos':'우익수',  'pid':'62947'},
-    '김선빈':   {'num':'3', 'pos':'2루수',   'pid':'78603'},
-    '김도영':   {'num':'5', 'pos':'유격수',  'pid':'52605'},
-    '데일':     {'num':'58','pos':'유격수',  'pid':'56632'},
-    '박민':     {'num':'2', 'pos':'3루수',   'pid':'50657'},
-    '오선우':   {'num':'56','pos':'1루수',   'pid':'69636'},
-    '박재현':   {'num':'15','pos':'외야수',  'pid':'55636'},
+<div class="header">
+  <div class="header-left">
+    <div class="tiger-icon">🐯</div>
+    <div>
+      <div class="header-title">KIA TIGERS</div>
+      <div class="header-sub" id="headerDate">2026 KBO 리그 대시보드</div>
+    </div>
+  </div>
+  <button class="refresh-btn" onclick="renderAll()">↻ 새로고침</button>
+</div>
+
+<div class="container">
+  <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px;">
+    <button class="season-btn active">정규시즌</button>
+    <span style="font-size:11px; color:var(--muted); margin-left:4px;">2026 KBO 정규시즌</span>
+  </div>
+  <div class="notif-bar">
+    <div class="notif-dot"></div>
+    <div><strong>경기 알림</strong> — 다음 경기 1시간 전에 브라우저 알림을 받을 수 있어요</div>
+    <button class="notif-btn" onclick="requestNotification()">알림 켜기</button>
+  </div>
+
+  <div class="grid" style="margin-bottom:16px;">
+    <div class="countdown-card">
+      <div class="countdown-match" id="cdMatch">다음 경기</div>
+      <div class="countdown-teams" id="cdTeams">KIA <span>vs</span> ?</div>
+      <div class="countdown-nums">
+        <div class="cd-unit"><span class="cd-num" id="cdDays">00</span><div class="cd-label">일</div></div>
+        <div class="cd-sep">:</div>
+        <div class="cd-unit"><span class="cd-num" id="cdHours">00</span><div class="cd-label">시간</div></div>
+        <div class="cd-sep">:</div>
+        <div class="cd-unit"><span class="cd-num" id="cdMins">00</span><div class="cd-label">분</div></div>
+        <div class="cd-sep">:</div>
+        <div class="cd-unit"><span class="cd-num" id="cdSecs">00</span><div class="cd-label">초</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">최근 경기 / 예정</div>
+      <div class="result-list" id="resultList"><div style="color:var(--muted);text-align:center;padding:20px;font-size:12px;">로딩 중...</div></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px;">
+    <div class="card-title">KIA 2026 정규시즌 성적</div>
+    <div class="stat-grid">
+      <div class="stat-item highlight"><div class="label">순위</div><div class="value" id="s-rank">-</div><div class="sub">10팀 중</div></div>
+      <div class="stat-item"><div class="label">승 / 무 / 패</div><div class="value" id="s-record">-</div><div class="sub" id="s-winrate">승률 -</div></div>
+      <div class="stat-item"><div class="label">팀 타율</div><div class="value" id="s-avg">-</div><div class="sub" id="s-avg-rank">리그 -위</div></div>
+      <div class="stat-item"><div class="label">팀 ERA</div><div class="value" id="s-era">-</div><div class="sub" id="s-era-rank">리그 -위</div></div>
+    </div>
+  </div>
+
+  <div class="grid" style="margin-bottom:16px;">
+    <div class="card">
+      <div class="card-title">KBO 팀 순위</div>
+      <table class="rank-table">
+        <thead><tr><th>#</th><th>팀</th><th>경기</th><th>승</th><th>패</th><th>승률</th><th>GB</th></tr></thead>
+        <tbody id="standingsTbody"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px;font-size:12px;">로딩 중...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-title">선수 순위</div>
+      <div class="tabs">
+        <button class="tab-btn active" id="tabBatterBtn" onclick="switchTab('batter')">타자 타율</button>
+        <button class="tab-btn" id="tabPitcherBtn" onclick="switchTab('pitcher')">투수 ERA</button>
+      </div>
+      <div class="tab-content active" id="tab-batter">
+        <table class="player-table">
+          <thead><tr><th>#</th><th>선수</th><th>팀</th><th>타율</th><th>안타</th><th>HR</th><th>타점</th></tr></thead>
+          <tbody id="batterTbody"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px;font-size:12px;">로딩 중...</td></tr></tbody>
+        </table>
+      </div>
+      <div class="tab-content" id="tab-pitcher">
+        <table class="player-table">
+          <thead><tr><th>#</th><th>선수</th><th>팀</th><th>ERA</th><th>이닝</th><th>K</th><th>승/패</th></tr></thead>
+          <tbody id="pitcherTbody"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px;font-size:12px;">로딩 중...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px;">
+    <div class="card-title">KIA 주전 선수 스탯</div>
+    <div class="tabs">
+      <button class="tab-btn active" id="playerTabH" onclick="switchPlayerTab('hitters')">타자</button>
+      <button class="tab-btn" id="playerTabP" onclick="switchPlayerTab('pitchers')">투수</button>
+    </div>
+    <div id="playerStatsContainer"><div style="color:var(--muted);text-align:center;padding:20px;font-size:12px;">로딩 중...</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title" style="display:flex;align-items:center;gap:6px;">
+      <span>최애 선수</span>
+      <span style="font-size:11px;background:rgba(204,0,0,0.15);color:var(--kia-red);padding:2px 8px;border-radius:10px;">오선우 · 박재현 · 최지민</span>
+    </div>
+    <div class="tabs">
+      <button class="tab-btn active" id="favTabH" onclick="switchFavTab('hitters')">타자</button>
+      <button class="tab-btn" id="favTabP" onclick="switchFavTab('pitchers')">투수</button>
+    </div>
+    <div id="favStatsContainer"><div style="color:var(--muted);text-align:center;padding:20px;font-size:12px;">로딩 중...</div></div>
+  </div>
+
+  <div style="font-size:11px;color:var(--muted);padding:12px 0 4px;">* 2026 KBO 정규시즌 개막 (3월 28일). 외국인: 네일·올러(투수) + 카스트로(타자) + 데일(아시아쿼터). 김도영 유격수 전환.</div>
+  <div class="last-update" id="lastUpdate">마지막 업데이트: —</div>
+</div>
+
+<script>
+const SEASON_DATA = {
+  regular: {
+    label: '정규시즌',
+    nextGame: {"date":"2026-04-09T18:30:00","opponent":"삼성 라이온즈","venue":"광주","home":true},
+    recentGames: [{"date":"04.01(수)","opp":"vs LG","score":"2-7","result":"lose","venue":"원정"},{"date":"04.02(목)","opp":"vs LG","score":"1-2","result":"lose","venue":"원정"},{"date":"04.03(금)","opp":"vs NC","score":"2-5","result":"lose","venue":"홈"},{"date":"04.04(토)","opp":"vs NC","score":"0-6","result":"lose","venue":"홈"},{"date":"04.05(일)","opp":"vs NC","score":"3-0","result":"win","venue":"홈"},{"date":"04.07(화)","opp":"vs 삼성","score":"3-10","result":"lose","venue":"홈"}],
+    kiaStats: {"rank":"9위","record":"2 / 0 / 7","winrate":"0.222","avg":"-","avgRank":"-","era":"-","eraRank":"-","label":"2026 정규시즌 성적"},
+    standings: [{"rank":1,"team":"SSG 랜더스","g":"9","w":"7","l":"2","pct":"0.778","gb":"0.0","kia":false},{"rank":1,"team":"KT 위즈","g":"9","w":"7","l":"2","pct":"0.778","gb":"0.0","kia":false},{"rank":3,"team":"NC 다이노스","g":"9","w":"6","l":"3","pct":"0.667","gb":"1.0","kia":false},{"rank":4,"team":"삼성 라이온즈","g":"9","w":"5","l":"3","pct":"0.625","gb":"1.5","kia":false},{"rank":5,"team":"LG 트윈스","g":"9","w":"5","l":"4","pct":"0.556","gb":"2.0","kia":false},{"rank":5,"team":"한화 이글스","g":"9","w":"5","l":"4","pct":"0.556","gb":"2.0","kia":false},{"rank":7,"team":"키움 히어로즈","g":"9","w":"3","l":"6","pct":"0.333","gb":"4.0","kia":false},{"rank":8,"team":"두산 베어스","g":"9","w":"2","l":"6","pct":"0.250","gb":"4.5","kia":false},{"rank":9,"team":"롯데 자이언츠","g":"9","w":"2","l":"7","pct":"0.222","gb":"5.0","kia":false},{"rank":9,"team":"KIA 타이거즈","g":"9","w":"2","l":"7","pct":"0.222","gb":"5.0","kia":true}],
+    batters: [{"rank":1,"name":"구창모","team":"NC","avg":"-","h":0,"hr":0,"rbi":0,"kia":false},{"rank":1,"name":"보쉴리","team":"KT","avg":"-","h":0,"hr":0,"rbi":0,"kia":false},{"rank":1,"name":"올러","team":"KIA","avg":"-","h":0,"hr":0,"rbi":0,"kia":true}],
+    pitchers: [{"rank":1,"name":"구창모","team":"NC","era":"0.00","ip":"0","k":11,"wl":"0-0","kia":false},{"rank":1,"name":"보쉴리","team":"KT","era":"0.00","ip":"0","k":11,"wl":"0-0","kia":false},{"rank":1,"name":"올러","team":"KIA","era":"0.00","ip":"0","k":13,"wl":"0-0","kia":true}],
+    kiaHitters: [{"name":"카스트로","num":"53","pos":"지명타자","avg":".243","hr":1,"rbi":6,"r":6,"h":9,"ab":37,"bb":3,"so":8,"obp":".300","slg":".378","ops":".678"},{"name":"나성범","num":"22","pos":"우익수","avg":".188","hr":1,"rbi":3,"r":1,"h":6,"ab":32,"bb":1,"so":2,"obp":".212","slg":".313","ops":".524"},{"name":"김선빈","num":"3","pos":"2루수","avg":".267","hr":0,"rbi":4,"r":1,"h":8,"ab":30,"bb":3,"so":0,"obp":".364","slg":".267","ops":".630"},{"name":"김도영","num":"5","pos":"유격수","avg":".250","hr":0,"rbi":0,"r":3,"h":8,"ab":32,"bb":2,"so":0,"obp":".294","slg":".250","ops":".544"},{"name":"데일","num":"58","pos":"유격수","avg":".321","hr":0,"rbi":1,"r":0,"h":9,"ab":28,"bb":1,"so":0,"obp":".345","slg":".321","ops":".667"},{"name":"박민","num":"2","pos":"3루수","avg":".222","hr":0,"rbi":2,"r":0,"h":6,"ab":27,"bb":0,"so":1,"obp":".222","slg":".222","ops":".444"}],
+    kiaPitchers: [{"name":"네일","num":"47","pos":"선발","era":"1.64","w":1,"l":0,"sv":0,"ip":"11.0","h":7,"bb":3,"k":11,"whip":"0.91","qs":0},{"name":"올러","num":"49","pos":"선발","era":"0.00","w":0,"l":0,"sv":0,"ip":"0.0","h":0,"bb":0,"k":0,"whip":"-","qs":0},{"name":"양현종","num":"11","pos":"선발","era":"3.72","w":1,"l":1,"sv":0,"ip":"9.2","h":10,"bb":4,"k":7,"whip":"1.45","qs":0},{"name":"이의리","num":"35","pos":"선발","era":"13.50","w":0,"l":1,"sv":0,"ip":"2.0","h":4,"bb":3,"k":1,"whip":"3.50","qs":0},{"name":"김태형","num":"17","pos":"선발","era":"3.72","w":0,"l":1,"sv":0,"ip":"9.2","h":9,"bb":2,"k":7,"whip":"1.14","qs":0}],
+    kiaFavHitters: [{"name":"오선우","num":"56","pos":"1루수","avg":".111","hr":0,"rbi":0,"r":0,"h":3,"ab":27,"bb":1,"so":3,"obp":".143","slg":".111","ops":".254"},{"name":"박재현","num":"15","pos":"외야수","avg":".286","hr":0,"rbi":1,"r":1,"h":2,"ab":7,"bb":0,"so":1,"obp":".286","slg":".286","ops":".571"}],
+    kiaFavPitchers: [{"name":"최지민","num":"39","pos":"불펜","era":"0.00","w":0,"l":0,"sv":0,"ip":"0.0","h":0,"bb":0,"k":0,"whip":"-","qs":0}]
+  }
+};
+
+function getData(){ return SEASON_DATA.regular; }
+function pad(n){ return String(n).padStart(2,'0'); }
+
+let cdTimer = null;
+function renderCountdown(){
+  if(cdTimer) clearInterval(cdTimer);
+  const ng = getData().nextGame;
+  if(!ng){ return; }
+  const target = new Date(ng.date);
+  const opp = ng.opponent.split(' ')[0];
+  const isHome = ng.home;
+  document.getElementById('cdMatch').textContent = ng.venue + (isHome ? ' · 홈' : ' · 원정');
+  document.getElementById('cdTeams').innerHTML = isHome
+    ? 'KIA <span>vs</span> ' + opp
+    : opp + ' <span>vs</span> KIA';
+  function update(){
+    const diff = target - new Date();
+    if(diff <= 0){
+      ['cdDays','cdHours','cdMins','cdSecs'].forEach(id => document.getElementById(id).textContent='00');
+      return;
+    }
+    document.getElementById('cdDays').textContent=pad(Math.floor(diff/86400000));
+    document.getElementById('cdHours').textContent=pad(Math.floor((diff%86400000)/3600000));
+    document.getElementById('cdMins').textContent=pad(Math.floor((diff%3600000)/60000));
+    document.getElementById('cdSecs').textContent=pad(Math.floor((diff%60000)/1000));
+  }
+  update();
+  cdTimer = setInterval(update, 1000);
 }
-PITCHER_INFO = {
-    '네일':   {'num':'47','pos':'선발','pid':'54640'},
-    '올러':   {'num':'49','pos':'선발','pid':'54642'},
-    '양현종': {'num':'11','pos':'선발','pid':'62401'},
-    '이의리': {'num':'35','pos':'선발','pid':'51648'},
-    '김태형': {'num':'17','pos':'선발','pid':'77637'},
-    '최지민': {'num':'39','pos':'불펜','pid':'52639'},
+
+function renderResults(){
+  const el = document.getElementById('resultList');
+  const games = getData().recentGames;
+  if(!games || games.length === 0){ el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px;font-size:12px;">경기 데이터 없음</div>'; return; }
+  el.innerHTML = games.map(g => `
+    <div class="result-item ${g.result}">
+      <div class="r-date">${g.date}</div>
+      <div class="r-teams">${g.opp} · ${g.venue}</div>
+      <div class="r-score">${g.score}</div>
+      <span class="badge ${g.result}">${g.result==='win'?'승':g.result==='lose'?'패':g.result==='draw'?'무':'예정'}</span>
+    </div>`).join('');
 }
-MAIN_HITTERS  = ['카스트로','나성범','김선빈','김도영','데일','박민']
-FAV_HITTERS   = ['오선우','박재현']
-MAIN_PITCHERS = ['네일','올러','양현종','이의리','김태형']
-FAV_PITCHERS  = ['최지민']
 
-def safe_int(s):
-    try: return int(float(str(s).strip()) if s else 0)
-    except: return 0
+function renderKiaStats(){
+  const s = getData().kiaStats;
+  document.getElementById('s-rank').textContent = s.rank;
+  document.getElementById('s-record').textContent = s.record;
+  document.getElementById('s-winrate').textContent = '승률 ' + s.winrate;
+  document.getElementById('s-avg').textContent = s.avg || '-';
+  document.getElementById('s-avg-rank').textContent = '리그 ' + (s.avgRank||'-') + '위';
+  document.getElementById('s-era').textContent = s.era || '-';
+  document.getElementById('s-era-rank').textContent = '리그 ' + (s.eraRank||'-') + '위';
+}
 
-def safe_avg(s):
-    try:
-        f = float(s)
-        return f".{int(f*1000):03d}" if f < 1 else f"{f:.3f}"
-    except: return '-'
+function renderStandings(){
+  const tbody = document.getElementById('standingsTbody');
+  const standings = getData().standings;
+  if(!standings || standings.length === 0){ tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px;font-size:12px;">데이터 없음</td></tr>'; return; }
+  const rankCount = {};
+  standings.forEach(t => { rankCount[t.rank] = (rankCount[t.rank]||0) + 1; });
+  tbody.innerHTML = standings.map(t => {
+    const isTie = rankCount[t.rank] > 1;
+    const rankLabel = isTie ? `<span style="font-size:9px;color:var(--muted)">공동</span><br>${t.rank}` : t.rank;
+    return `<tr class="${t.kia?'kia-row':''}">
+      <td><span class="rank-num ${t.rank<=3?'top':''}" style="line-height:1.2">${rankLabel}</span></td>
+      <td>${t.kia?'<span class="team-dot"></span>':''}${t.team}</td>
+      <td>${t.g}</td><td>${t.w}</td><td>${t.l}</td><td>${t.pct}</td><td>${t.gb}</td>
+    </tr>`;
+  }).join('');
+}
 
+function renderBatters(){
+  const batters = getData().batters;
+  if(!batters || batters.length === 0){ document.getElementById('batterTbody').innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px;font-size:12px;">데이터 없음</td></tr>'; return; }
+  document.getElementById('batterTbody').innerHTML = batters.map(p => `
+    <tr class="${p.kia?'kia-p':''}">
+      <td>${p.rank}</td>
+      <td>${p.name}${p.kia?'<span class="kia-tag">KIA</span>':''}</td>
+      <td>${p.team}</td><td><strong>${p.avg}</strong></td><td>${p.h}</td><td>${p.hr}</td><td>${p.rbi}</td>
+    </tr>`).join('');
+}
 
-def get_kia_player_ids():
-    """BasicOld.aspx에서 KIA 선수 이름→playerId 자동 수집"""
-    ids = {}
-    base = "https://www.koreabaseball.com/Record/Player/HitterBasic/BasicOld.aspx"
-    try:
-        res = requests.get(base, headers=HEADERS, timeout=15)
-        soup = BeautifulSoup(res.text, "html.parser")
-        for a in soup.select("table a[href*='playerId']"):
-            name = a.get_text(strip=True)
-            href = a.get('href','')
-            m = re.search(r'playerId=(\d+)', href)
-            if m:
-                # 팀 확인
-                tr = a.find_parent('tr')
-                if tr:
-                    cols = tr.select("td")
-                    if len(cols) > 2 and cols[2].get_text(strip=True) == 'KIA':
-                        ids[name] = m.group(1)
-    except Exception as e:
-        print(f"player ID 수집 오류: {e}")
-    
-    # 투수도 수집
-    base2 = "https://www.koreabaseball.com/Record/Player/PitcherBasic/BasicOld.aspx"
-    try:
-        res = requests.get(base2, headers=HEADERS, timeout=15)
-        soup = BeautifulSoup(res.text, "html.parser")
-        for a in soup.select("table a[href*='playerId']"):
-            name = a.get_text(strip=True)
-            href = a.get('href','')
-            m = re.search(r'playerId=(\d+)', href)
-            if m:
-                tr = a.find_parent('tr')
-                if tr:
-                    cols = tr.select("td")
-                    if len(cols) > 2 and cols[2].get_text(strip=True) == 'KIA':
-                        ids[name] = m.group(1)
-    except Exception as e:
-        print(f"투수 ID 수집 오류: {e}")
-    
-    print(f"KIA 선수 ID 수집: {len(ids)}명 - {list(ids.keys())}")
-    return ids
+function renderPitchers(){
+  const pitchers = getData().pitchers;
+  if(!pitchers || pitchers.length === 0){ document.getElementById('pitcherTbody').innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px;font-size:12px;">데이터 없음</td></tr>'; return; }
+  document.getElementById('pitcherTbody').innerHTML = pitchers.map(p => `
+    <tr class="${p.kia?'kia-p':''}">
+      <td>${p.rank}</td>
+      <td>${p.name}${p.kia?'<span class="kia-tag">KIA</span>':''}</td>
+      <td>${p.team}</td><td><strong>${p.era}</strong></td><td>${p.ip}</td><td>${p.k}</td><td>${p.wl}</td>
+    </tr>`).join('');
+}
 
-def get_top_batters():
-    """전체 타자 순위 상위 10명 - BasicOld.aspx에서 KIA 표시 포함"""
-    try:
-        res = requests.get("https://www.koreabaseball.com/Record/Player/HitterBasic/BasicOld.aspx",
-                           headers=HEADERS, timeout=15)
-        soup = BeautifulSoup(res.text, "html.parser")
-        table = soup.select_one("table")
-        if not table: return []
-        out = []
-        for row in table.select("tbody tr") or table.select("tr")[1:]:
-            cols = row.select("td")
-            if len(cols) < 8: continue
-            try: rank = int(cols[0].get_text(strip=True))
-            except: continue
-            a = row.select_one("a")
-            pid = ""
-            if a:
-                m = re.search(r'playerId=(\d+)', a.get('href',''))
-                if m: pid = m.group(1)
-            name = cols[1].get_text(strip=True)
-            team = cols[2].get_text(strip=True)
-            try:
-                avg_raw = cols[3].get_text(strip=True)
-                avg = f".{int(float(avg_raw)*1000):03d}" if avg_raw and avg_raw != '-' else '-'
-            except: avg = '-'
-            out.append({
-                "rank": rank, "name": name, "team": team,
-                "avg": avg,
-                "h":   safe_int(cols[6].get_text(strip=True)),
-                "hr":  safe_int(cols[9].get_text(strip=True)) if len(cols)>9 else 0,
-                "rbi": safe_int(cols[11].get_text(strip=True)) if len(cols)>11 else 0,
-                "kia": team == 'KIA'
-            })
-            if len(out) >= 10: break
-        print(f"타자 순위: {len(out)}명")
-        return out
-    except Exception as e: print(f"batters error: {e}"); return []
+let currentPlayerTab = 'hitters';
+function switchPlayerTab(tab){
+  currentPlayerTab = tab;
+  document.getElementById('playerTabH').classList.toggle('active', tab==='hitters');
+  document.getElementById('playerTabP').classList.toggle('active', tab==='pitchers');
+  renderPlayerStats();
+}
 
-def get_top_pitchers():
-    """전체 투수 순위 상위 10명"""
-    try:
-        res = requests.get("https://www.koreabaseball.com/Record/Player/PitcherBasic/BasicOld.aspx",
-                           headers=HEADERS, timeout=15)
-        soup = BeautifulSoup(res.text, "html.parser")
-        table = soup.select_one("table")
-        if not table: return []
-        out = []
-        for row in table.select("tbody tr") or table.select("tr")[1:]:
-            cols = row.select("td")
-            if len(cols) < 8: continue
-            try: rank = int(cols[0].get_text(strip=True))
-            except: continue
-            name = cols[1].get_text(strip=True)
-            team = cols[2].get_text(strip=True)
-            out.append({
-                "rank": rank, "name": name, "team": team,
-                "era": cols[3].get_text(strip=True),
-                "ip":  cols[8].get_text(strip=True) if len(cols)>8 else '-',
-                "k":   safe_int(cols[13].get_text(strip=True)) if len(cols)>13 else 0,
-                "wl":  f"{safe_int(cols[5].get_text(strip=True))}-{safe_int(cols[6].get_text(strip=True))}" if len(cols)>6 else '-',
-                "kia": team == 'KIA'
-            })
-            if len(out) >= 10: break
-        print(f"투수 순위: {len(out)}명")
-        return out
-    except Exception as e: print(f"pitchers error: {e}"); return []
+function renderPlayerStats(){
+  const container = document.getElementById('playerStatsContainer');
+  if(currentPlayerTab === 'hitters'){
+    const list = getData().kiaHitters || [];
+    if(list.length === 0){ container.innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px;font-size:12px;">데이터 없음</div>'; return; }
+    container.innerHTML = `<table class="player-table" style="table-layout:fixed;width:100%">
+      <thead><tr><th style="width:70px">선수</th><th style="width:40px">번호</th><th style="width:60px">포지션</th><th>타율</th><th>HR</th><th>타점</th><th>출루율</th><th>OPS</th></tr></thead>
+      <tbody>${list.map(p=>`<tr>
+        <td style="color:var(--kia-red);font-weight:500">${p.name}</td>
+        <td style="color:var(--muted)">#${p.num}</td>
+        <td style="color:var(--muted);font-size:11px">${p.pos}</td>
+        <td><strong>${p.avg}</strong></td><td>${p.hr}</td><td>${p.rbi}</td><td>${p.obp}</td>
+        <td style="color:#fbbf24">${p.ops}</td></tr>`).join('')}
+      </tbody></table>`;
+  } else {
+    const list = getData().kiaPitchers || [];
+    if(list.length === 0){ container.innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px;font-size:12px;">데이터 없음</div>'; return; }
+    container.innerHTML = `<table class="player-table" style="table-layout:fixed;width:100%">
+      <thead><tr><th style="width:70px">선수</th><th style="width:40px">번호</th><th style="width:60px">포지션</th><th>ERA</th><th>승</th><th>패</th><th>세이브</th><th>WHIP</th></tr></thead>
+      <tbody>${list.map(p=>`<tr>
+        <td style="color:var(--kia-red);font-weight:500">${p.name}</td>
+        <td style="color:var(--muted)">#${p.num}</td>
+        <td style="color:var(--muted);font-size:11px">${p.pos}</td>
+        <td><strong>${p.era}</strong></td><td>${p.w}</td><td>${p.l}</td><td>${p.sv}</td>
+        <td style="color:#fbbf24">${p.whip}</td></tr>`).join('')}
+      </tbody></table>`;
+  }
+}
 
-def get_kia_stats_from_standings(standings):
-    """순위표에서 KIA 성적 파싱"""
-    for t in standings:
-        if t.get('kia'):
-            w, l = safe_int(t['w']), safe_int(t['l'])
-            g = safe_int(t['g'])
-            pct = t['pct']
-            rank = t['rank']
-            gb = t['gb']
-            return {
-                "rank": f"{rank}위", "record": f"{w} / 0 / {l}",
-                "winrate": pct, "avg": "-", "avgRank": "-",
-                "era": "-", "eraRank": "-", "label": "2026 정규시즌 성적"
-            }
-    return None
+let currentFavTab = 'hitters';
+function switchFavTab(tab){
+  currentFavTab = tab;
+  document.getElementById('favTabH').classList.toggle('active', tab==='hitters');
+  document.getElementById('favTabP').classList.toggle('active', tab==='pitchers');
+  renderFavStats();
+}
 
-def get_standings():
-    try:
-        res=requests.get("https://eng.koreabaseball.com/Standings/TeamStandings.aspx",headers=HEADERS,timeout=15)
-        soup=BeautifulSoup(res.text,"html.parser")
-        rows=soup.select("table")[0].select("tr")[1:]
-        out=[]
-        for row in rows:
-            cols=row.select("td")
-            if len(cols)<8: continue
-            try: rank=int(cols[0].get_text(strip=True))
-            except: continue
-            eng=cols[1].get_text(strip=True).upper()
-            out.append({"rank":rank,"team":TEAM_ENG_KOR.get(eng,eng),
-                        "g":cols[2].get_text(strip=True),"w":cols[3].get_text(strip=True),
-                        "l":cols[4].get_text(strip=True),"pct":cols[6].get_text(strip=True),
-                        "gb":cols[7].get_text(strip=True),"kia":eng=='KIA'})
-        print(f"순위: {len(out)}팀"); return out
-    except Exception as e: print(f"standings error: {e}"); return []
+function renderFavStats(){
+  const container = document.getElementById('favStatsContainer');
+  if(currentFavTab === 'hitters'){
+    const list = getData().kiaFavHitters || [];
+    if(list.length === 0){ container.innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px;font-size:12px;">데이터 없음</div>'; return; }
+    container.innerHTML = `<table class="player-table" style="table-layout:fixed;width:100%">
+      <thead><tr><th style="width:70px">선수</th><th style="width:40px">번호</th><th style="width:60px">포지션</th><th>타율</th><th>HR</th><th>타점</th><th>출루율</th><th>OPS</th></tr></thead>
+      <tbody>${list.map(p=>`<tr>
+        <td style="color:var(--kia-red);font-weight:500">${p.name}</td>
+        <td style="color:var(--muted)">#${p.num}</td>
+        <td style="color:var(--muted);font-size:11px">${p.pos}</td>
+        <td><strong>${p.avg}</strong></td><td>${p.hr}</td><td>${p.rbi}</td><td>${p.obp}</td>
+        <td style="color:#fbbf24">${p.ops}</td></tr>`).join('')}
+      </tbody></table>`;
+  } else {
+    const list = getData().kiaFavPitchers || [];
+    if(list.length === 0){ container.innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px;font-size:12px;">데이터 없음</div>'; return; }
+    container.innerHTML = `<table class="player-table" style="table-layout:fixed;width:100%">
+      <thead><tr><th style="width:70px">선수</th><th style="width:40px">번호</th><th style="width:60px">포지션</th><th>ERA</th><th>승</th><th>패</th><th>세이브</th><th>WHIP</th></tr></thead>
+      <tbody>${list.map(p=>`<tr>
+        <td style="color:var(--kia-red);font-weight:500">${p.name}</td>
+        <td style="color:var(--muted)">#${p.num}</td>
+        <td style="color:var(--muted);font-size:11px">${p.pos}</td>
+        <td><strong>${p.era}</strong></td><td>${p.w}</td><td>${p.l}</td><td>${p.sv}</td>
+        <td style="color:#fbbf24">${p.whip}</td></tr>`).join('')}
+      </tbody></table>`;
+  }
+}
 
-def get_kia_schedule():
-    try:
-        res=requests.get("https://eng.koreabaseball.com/Schedule/DailySchedule.aspx",headers=HEADERS,timeout=15)
-        soup=BeautifulSoup(res.text,"html.parser")
-        table=soup.select_one("table")
-        if not table: return [],None
-        rows=table.select("tr")
-        games=[]; next_game=None; cur_date=""; now=datetime.now()
-        for row in rows:
-            cols=row.select("td")
-            if not cols: continue
-            first=cols[0].get_text(strip=True)
-            if re.match(r'\d{2}\.\d{2}\(\w+\)',first): cur_date=first
-            col_t=[c.get_text(strip=True).upper() for c in cols]
-            col_o=[c.get_text(strip=True) for c in cols]
-            if 'KIA' not in col_t: continue
-            dm=re.match(r'(\d{2})\.(\d{2})\((\w+)\)',cur_date)
-            if not dm: continue
-            mo,da,de=int(dm.group(1)),int(dm.group(2)),dm.group(3)
-            dk=DAY_MAP.get(de,'')
-            date_str=f"{cur_date[:5]}({dk})"
-            found=False
-            for i,txt in enumerate(col_t):
-                sm=re.match(r'^(\d+):(\d+)$',txt)
-                if not sm or i==0 or i>=len(col_t)-1: continue
-                away,home=col_t[i-1],col_t[i+1]
-                if away not in VALID_TEAMS or home not in VALID_TEAMS: continue
-                if 'KIA' not in away and 'KIA' not in home: continue
-                as_,hs_=int(sm.group(1)),int(sm.group(2))
-                if 'KIA' in away: ks,os_,oe,vt=as_,hs_,home,'원정'
-                else: ks,os_,oe,vt=hs_,as_,away,'홈'
-                op=TEAM_ENG_KOR.get(oe,oe).split(' ')[0]
-                res_='win' if ks>os_ else ('lose' if ks<os_ else 'draw')
-                games.append({"date":date_str,"opp":f"vs {op}","score":f"{ks}-{os_}","result":res_,"venue":vt})
-                found=True; break
-            if not found:
-                for i,orig in enumerate(col_o):
-                    if not re.match(r'^\d{2}:\d{2}$',orig): continue
-                    if i==0 or i>=len(col_t)-1: continue
-                    away,home=col_t[i-1],col_t[i+1]
-                    if away not in VALID_TEAMS or home not in VALID_TEAMS: continue
-                    if 'KIA' not in away and 'KIA' not in home: continue
-                    if 'KIA' in away: oe,vt=home,'원정'
-                    else: oe,vt=away,'홈'
-                    op_kor=TEAM_ENG_KOR.get(oe,oe)
-                    op_short=op_kor.split(' ')[0]
-                    vname=vt
-                    for ct in col_o:
-                        v=VENUE_MAP.get(ct.upper(),'')
-                        if v: vname=v; break
-                    h,m_=map(int,orig.split(':'))
-                    fdt=datetime(now.year,mo,da,h,m_)
-                    fdt_str=fdt.strftime('%Y-%m-%dT%H:%M:%S')
-                    if next_game is None and fdt>=now:
-                        next_game={"date":fdt_str,"opponent":op_kor,"venue":vname,"home":vt=='홈'}
-                    games.append({"date":date_str,"opp":f"vs {op_short}","score":orig,"result":"upcoming","venue":vname,"fullDate":fdt_str})
-                    break
-        print(f"KIA 경기: {len(games)}경기")
-        if next_game: print(f"다음 경기: {next_game['date']} vs {next_game['opponent']}")
-        return games,next_game
-    except Exception as e: print(f"schedule error: {e}"); return [],None
+function switchTab(tab){
+  document.getElementById('tab-batter').classList.toggle('active', tab==='batter');
+  document.getElementById('tab-pitcher').classList.toggle('active', tab==='pitcher');
+  document.getElementById('tabBatterBtn').classList.toggle('active', tab==='batter');
+  document.getElementById('tabPitcherBtn').classList.toggle('active', tab==='pitcher');
+}
 
-def fetch_hitter(name, info):
-    """선수 개인 페이지에서 타격 기록 조회"""
-    url = f"https://www.koreabaseball.com/Record/Player/HitterDetail/Basic.aspx?playerId={info['pid']}"
-    try:
-        res = requests.get(url, headers=HEADERS, timeout=10)
-        soup = BeautifulSoup(res.text, "html.parser")
-        # 타자 테이블: 팀명(0) AVG(1) G(2) PA(3) AB(4) R(5) H(6) 2B(7) 3B(8) HR(9) TB(10) RBI(11)
-        for table in soup.select("table"):
-            for row in table.select("tr"):
-                cols = row.select("td")
-                if len(cols) < 10: continue
-                if cols[0].get_text(strip=True) != 'KIA': continue
-                try:
-                    ar = cols[1].get_text(strip=True)
-                    avg = safe_avg(ar)
-                except:
-                    avg = '-'
-                return {
-                    "avg": avg,
-                    "h":   safe_int(cols[6].get_text(strip=True)),
-                    "ab":  safe_int(cols[4].get_text(strip=True)),
-                    "r":   safe_int(cols[5].get_text(strip=True)),
-                    "hr":  safe_int(cols[9].get_text(strip=True)) if len(cols)>9 else 0,
-                    "rbi": safe_int(cols[11].get_text(strip=True)) if len(cols)>11 else 0,
-                }
-    except Exception as e:
-        print(f"  {name} 오류: {e}")
-    return None
+function requestNotification(){
+  if(!('Notification' in window)) return;
+  Notification.requestPermission().then(p => {
+    if(p==='granted') alert('경기 알림이 설정되었어요!');
+  });
+}
 
-def fetch_pitcher(name, info):
-    """선수 개인 페이지에서 투구 기록 조회"""
-    url = f"https://www.koreabaseball.com/Record/Player/PitcherDetail/Basic.aspx?playerId={info['pid']}"
-    try:
-        res = requests.get(url, headers=HEADERS, timeout=10)
-        soup = BeautifulSoup(res.text, "html.parser")
-        # KIA 팀명이 첫 컬럼인 행 찾기
-        # 투수 테이블: 팀명(0) ERA(1) G(2) W(3) L(4) SV(5) HLD(6) WPCT(7) IP(8) H(9) HR(10) BB(11) HBP(12) SO(13) R(14) ER(15) WHIP(16)
-        for table in soup.select("table"):
-            for row in table.select("tr"):
-                cols = row.select("td")
-                if len(cols) < 10: continue
-                if cols[0].get_text(strip=True) != 'KIA': continue
-                return {
-                    "era":  cols[1].get_text(strip=True) or '-',
-                    "w":    safe_int(cols[3].get_text(strip=True)),
-                    "l":    safe_int(cols[4].get_text(strip=True)),
-                    "sv":   safe_int(cols[5].get_text(strip=True)),
-                    "ip":   cols[8].get_text(strip=True) if len(cols)>8 else '0.0',
-                    "h":    safe_int(cols[9].get_text(strip=True)) if len(cols)>9 else 0,
-                    "bb":   safe_int(cols[11].get_text(strip=True)) if len(cols)>11 else 0,
-                    "k":    safe_int(cols[13].get_text(strip=True)) if len(cols)>13 else 0,
-                    "whip": cols[16].get_text(strip=True) if len(cols)>16 else '-',
-                }
-    except Exception as e:
-        print(f"  {name} 오류: {e}")
-    return None
+function renderAll(){
+  renderCountdown();
+  renderResults();
+  renderKiaStats();
+  renderStandings();
+  renderBatters();
+  renderPitchers();
+  renderPlayerStats();
+  renderFavStats();
+  const now = new Date();
+  document.getElementById('lastUpdate').textContent = '마지막 업데이트: 2026.04.08 기준';
+  document.getElementById('headerDate').textContent = '2026 KBO 리그 · 2026.04.08 기준';
+}
 
-def scrape_all_hitters(auto_ids=None):
-    all_names = list(set(MAIN_HITTERS + FAV_HITTERS))
-    result = {}
-    for name in all_names:
-        info = HITTER_INFO.get(name, {}).copy()
-        # 자동 수집된 ID가 있으면 우선 사용
-        if auto_ids and name in auto_ids:
-            info['pid'] = auto_ids[name]
-        if not info.get('pid'): continue
-        data = fetch_hitter(name, info)
-        if data:
-            result[name] = data
-            print(f"  타자 {name}: {data['avg']}")
-        else:
-            print(f"  타자 {name}: 기록 없음")
-    print(f"KIA 타자: {len(result)}명")
-    return result
-
-def scrape_all_pitchers(auto_ids=None):
-    all_names = list(set(MAIN_PITCHERS + FAV_PITCHERS))
-    result = {}
-    for name in all_names:
-        info = PITCHER_INFO.get(name, {}).copy()
-        if auto_ids and name in auto_ids:
-            info['pid'] = auto_ids[name]
-        if not info.get('pid'): continue
-        data = fetch_pitcher(name, info)
-        if data:
-            result[name] = data
-            print(f"  투수 {name}: ERA {data['era']}")
-        else:
-            print(f"  투수 {name}: 기록 없음")
-    print(f"KIA 투수: {len(result)}명")
-    return result
-
-def mh(n,d,info): return {"name":n,"num":info['num'],"pos":info['pos'],"avg":d.get("avg",'-'),"hr":d.get("hr",0),"rbi":d.get("rbi",0),"r":d.get("r",0),"h":d.get("h",0),"ab":d.get("ab",0),"bb":0,"so":0,"obp":'-',"slg":'-',"ops":'-'}
-def me(n,info): return {"name":n,"num":info['num'],"pos":info['pos'],"avg":'-',"hr":0,"rbi":0,"r":0,"h":0,"ab":0,"bb":0,"so":0,"obp":'-',"slg":'-',"ops":'-'}
-def mp(n,d,info): return {"name":n,"num":info['num'],"pos":info['pos'],"era":d.get("era",'-'),"w":d.get("w",0),"l":d.get("l",0),"sv":d.get("sv",0),"ip":d.get("ip",'0.0'),"h":d.get("h",0),"bb":d.get("bb",0),"k":d.get("k",0),"whip":d.get("whip",'-'),"qs":0}
-def mpe(n,info): return {"name":n,"num":info['num'],"pos":info['pos'],"era":'-',"w":0,"l":0,"sv":0,"ip":'0.0',"h":0,"bb":0,"k":0,"whip":'-',"qs":0}
-
-def replace_in_regular(html, key, new_json_str):
-    reg_start = html.find('  regular: {')
-    if reg_start == -1: reg_start = html.find('  regular:{')
-    if reg_start == -1: print(f"⚠️ regular: 섹션 없음"); return html
-    depth = 0; reg_end = reg_start
-    for i in range(reg_start, len(html)):
-        if html[i] == '{': depth += 1
-        elif html[i] == '}':
-            depth -= 1
-            if depth == 0: reg_end = i; break
-    regular_block = html[reg_start:reg_end+1]
-    key_search = f'    {key}:'
-    key_idx = regular_block.find(key_search)
-    if key_idx == -1: print(f"⚠️ {key} 패턴 실패"); return html
-    colon_pos = regular_block.find(':', key_idx + len(key_search) - 1)
-    sb = regular_block.find('[', colon_pos)
-    sc = regular_block.find('{', colon_pos)
-    if sb == -1: start = sc
-    elif sc == -1: start = sb
-    else: start = min(sb, sc)
-    if start == -1: print(f"⚠️ {key} 시작 괄호 없음"); return html
-    oc = regular_block[start]
-    cc = ']' if oc == '[' else '}'
-    depth2 = 0; end = start
-    for i in range(start, len(regular_block)):
-        if regular_block[i] == oc: depth2 += 1
-        elif regular_block[i] == cc:
-            depth2 -= 1
-            if depth2 == 0: end = i; break
-    new_block = regular_block[:start] + new_json_str + regular_block[end+1:]
-    print(f"✅ {key} 교체")
-    return html[:reg_start] + new_block + html[reg_end+1:]
-
-def build_html(standings, games, next_game, hitters, pitchers, batters=None, top_pitchers=None):
-    with open("index.html","r",encoding="utf-8") as f: html=f.read()
-    now=datetime.now(); today=now.strftime("%Y.%m.%d")
-    if standings:
-        html=replace_in_regular(html,'standings',json.dumps(standings,ensure_ascii=False))
-        kia_stats = get_kia_stats_from_standings(standings)
-        if kia_stats:
-            html=replace_in_regular(html,'kiaStats',json.dumps(kia_stats,ensure_ascii=False))
-    if games:
-        done=[g for g in games if g['result']!='upcoming'][-10:]
-        upcoming=[g for g in games if g['result']=='upcoming'][:3]
-        html=replace_in_regular(html,'recentGames',json.dumps(done+upcoming,ensure_ascii=False))
-    if next_game:
-        html=replace_in_regular(html,'nextGame',json.dumps(next_game,ensure_ascii=False))
-    if hitters:
-        main_h=[mh(n,hitters[n],HITTER_INFO[n]) if n in hitters else me(n,HITTER_INFO[n]) for n in MAIN_HITTERS if n in HITTER_INFO]
-        fav_h =[mh(n,hitters[n],HITTER_INFO[n]) if n in hitters else me(n,HITTER_INFO[n]) for n in FAV_HITTERS  if n in HITTER_INFO]
-        html=replace_in_regular(html,'kiaHitters',json.dumps(main_h,ensure_ascii=False))
-        html=replace_in_regular(html,'kiaFavHitters',json.dumps(fav_h,ensure_ascii=False))
-    if pitchers:  # KIA 선수
-        main_p=[mp(n,pitchers[n],PITCHER_INFO[n]) if n in pitchers else mpe(n,PITCHER_INFO[n]) for n in MAIN_PITCHERS if n in PITCHER_INFO]
-        fav_p =[mp(n,pitchers[n],PITCHER_INFO[n]) if n in pitchers else mpe(n,PITCHER_INFO[n]) for n in FAV_PITCHERS  if n in PITCHER_INFO]
-        html=replace_in_regular(html,'kiaPitchers',json.dumps(main_p,ensure_ascii=False))
-        html=replace_in_regular(html,'kiaFavPitchers',json.dumps(fav_p,ensure_ascii=False))
-    if batters:
-        html=replace_in_regular(html,'batters',json.dumps(batters,ensure_ascii=False))
-    if top_pitchers:
-        html=replace_in_regular(html,'pitchers',json.dumps(top_pitchers,ensure_ascii=False))
-    # JS 변수 초기화 패치
-    if 'let currentPlayerTab' not in html:
-        html = html.replace(
-            "let currentSeason = 'regular'; // 정규시즌 고정",
-            "let currentSeason = 'regular'; // 정규시즌 고정\nlet currentPlayerTab = 'hitters';\nlet currentFavTab = 'hitters';"
-        )
-    html=re.sub(r'2026 KBO 리그 · 2026.04.08 기준',f'2026 KBO 리그 · 2026.04.08 기준',html)
-    with open("index.html","w",encoding="utf-8") as f: f.write(html)
-    print(f"✅ index.html 완료 ({today})")
-
-if __name__=="__main__":
-    print("📡 KBO 데이터 수집 중...")
-    standings        = get_standings()
-    games,next_game  = get_kia_schedule()
-    auto_ids         = get_kia_player_ids()
-    hitters          = scrape_all_hitters(auto_ids)
-    pitchers_data    = scrape_all_pitchers(auto_ids)
-    batters          = get_top_batters()
-    top_pitchers     = get_top_pitchers()
-    build_html(standings,games,next_game,hitters,pitchers_data,batters,top_pitchers)
+renderAll();
+</script>
+</body>
+</html>
