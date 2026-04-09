@@ -340,6 +340,7 @@ def get_kia_schedule_eng():
                         games.append({"date":date_str,"opp":f"vs {op_short}","score":orig,"result":"upcoming","venue":vt,"fullDate":fdt_str})
                     except: pass
                     break
+        print(f"영문 KIA 경기: {len(games)}경기, 예정: {len([g for g in games if g["result"]=="upcoming"])}경기")
         return games, next_game
     except Exception as e:
         print(f"eng schedule error: {e}")
@@ -481,6 +482,45 @@ def mp(n,d,info): return {"name":n,"num":info['num'],"pos":info['pos'],"era":d.g
 def mpe(n,info): return {"name":n,"num":info['num'],"pos":info['pos'],"era":'-',"w":0,"l":0,"sv":0,"hld":0,"ip":'0.0',"bb":0,"k":0,"whip":'-'}
 
 
+
+def get_kia_team_stats():
+    """KBO 팀 타율/ERA 수집"""
+    avg, avg_rank, era, era_rank = '-', '-', '-', '-'
+    try:
+        # 팀 타율
+        res = requests.get("https://www.koreabaseball.com/Record/Team/Hitter/Basic1.aspx", headers=HEADERS, timeout=15)
+        soup = BeautifulSoup(res.text, "html.parser")
+        table = soup.select_one("table")
+        if table:
+            rows = table.select("tr")[1:]
+            for i, row in enumerate(rows):
+                cols = row.select("td")
+                if len(cols) < 3: continue
+                if 'KIA' in cols[1].get_text():
+                    avg = cols[2].get_text(strip=True)
+                    avg_rank = str(i+1)
+                    break
+    except Exception as e:
+        print(f"팀타율 오류: {e}")
+    try:
+        # 팀 ERA
+        res2 = requests.get("https://www.koreabaseball.com/Record/Team/Pitcher/Basic1.aspx", headers=HEADERS, timeout=15)
+        soup2 = BeautifulSoup(res2.text, "html.parser")
+        table2 = soup2.select_one("table")
+        if table2:
+            rows2 = table2.select("tr")[1:]
+            for i, row in enumerate(rows2):
+                cols = row.select("td")
+                if len(cols) < 3: continue
+                if 'KIA' in cols[1].get_text():
+                    era = cols[2].get_text(strip=True)
+                    era_rank = str(i+1)
+                    break
+    except Exception as e:
+        print(f"팀ERA 오류: {e}")
+    print(f"팀타율: {avg}({avg_rank}위), 팀ERA: {era}({era_rank}위)")
+    return avg, avg_rank, era, era_rank
+
 def get_top_batters():
     """BasicOld.aspx에서 전체 타자 순위 상위 10명"""
     try:
@@ -536,12 +576,12 @@ def get_top_pitchers():
         print(f"투수 순위: {len(out)}명"); return out
     except Exception as e: print(f"pitchers error: {e}"); return []
 
-def get_kia_stats_from_standings(standings):
+def get_kia_stats_from_standings(standings, avg='-', avg_rank='-', era='-', era_rank='-'):
     for t in standings:
         if t.get('kia'):
             w,l = safe_int(t['w']),safe_int(t['l'])
             return {"rank":f"{t['rank']}위","record":f"{w} / 0 / {l}",
-                    "winrate":t['pct'],"avg":"-","avgRank":"-","era":"-","eraRank":"-","label":"2026 정규시즌 성적"}
+                    "winrate":t['pct'],"avg":avg,"avgRank":avg_rank,"era":era,"eraRank":era_rank,"label":"2026 정규시즌 성적"}
     return None
 
 def replace_in_regular(html, key, new_json_str):
@@ -584,7 +624,8 @@ def build_html(standings, games, next_game, hitters, pitchers, batters=None, top
     now=datetime.now(); today=now.strftime("%Y.%m.%d")
     if standings:
         html=replace_in_regular(html,'standings',json.dumps(standings,ensure_ascii=False))
-        kia_stats = get_kia_stats_from_standings(standings)
+        avg, avg_rank, era, era_rank = get_kia_team_stats()
+        kia_stats = get_kia_stats_from_standings(standings, avg, avg_rank, era, era_rank)
         if kia_stats:
             html=replace_in_regular(html,'kiaStats',json.dumps(kia_stats,ensure_ascii=False))
     if games:
