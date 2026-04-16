@@ -45,6 +45,21 @@ FAV_PLAYER_IDS = {
     '박재현': ('hitter', '55636'),
     '최지민': ('pitcher', '52639'),
 }
+# KIA 타자 전체 playerId (개인 상세 페이지 직접 수집용)
+KIA_HITTER_IDS = {
+    '카스트로': '56626', '나성범': '62947', '김선빈': '78603', '김도영': '52605',
+    '데일':    '56632', '박민':  '50657', '오선우': '69636', '박재현': '55636',
+    '김호령':  '65653', '한준수': '68646', '윤도현': '52667', '박상준': '52634',
+    '고종욱':  '61353', '김규성': '66614', '이창진': '64560', '박정우': '67609',
+    '김태군':  '78122',
+}
+# KIA 투수 전체 playerId
+KIA_PITCHER_IDS = {
+    '네일':   '54640', '올러':   '55633', '양현종': '77637', '이의리': '51648',
+    '김태형': '55610', '최지민': '52639', '성영탁': '54610', '이태양': '60768',
+    '조상우': '63342', '김범수': '65769', '김기훈': '69620', '정해영': '50662',
+    '김시훈': '68928', '전상현': '66609', '홍민규': '55267', '황동하': '52641',
+}
 
 def safe_int(s):
     try: return int(float(str(s).strip()) if s else 0)
@@ -57,77 +72,23 @@ def safe_avg(s):
     except: return '-'
 
 def scrape_kia_hitters():
-    """Basic1 전체 리그 타자 목록에서 KIA 선수만 필터링 (타율순)"""
+    """KIA 타자 전체를 개인 상세 페이지에서 수집 후 타율순 정렬"""
     result = {}
-    try:
-        res = requests.get(
-            "https://www.koreabaseball.com/Record/Player/HitterBasic/Basic1.aspx?sortColumn=HRA&sortType=DESC",
-            headers=HEADERS, timeout=15)
-        soup = BeautifulSoup(res.text, "html.parser")
-        table = soup.select_one("table")
-        if not table: return result
-        for row in table.select("tr"):
-            cols = row.select("td")
-            if len(cols) < 5: continue
-            team = cols[2].get_text(strip=True)
-            if team != 'KIA': continue
-            name = cols[1].get_text(strip=True)
-            a = row.select_one("a[href*='playerId']")
-            pid = re.search(r'playerId=(\d+)', a['href']).group(1) if a else ''
-            result[name] = {
-                'pid': pid,
-                'avg': safe_avg(cols[3].get_text(strip=True)),
-                'pa':  safe_int(cols[5].get_text(strip=True)),
-                'ab':  safe_int(cols[6].get_text(strip=True)),
-                'h':   safe_int(cols[7].get_text(strip=True)),
-                'hr':  safe_int(cols[10].get_text(strip=True)) if len(cols)>10 else 0,
-                'rbi': safe_int(cols[11].get_text(strip=True)) if len(cols)>11 else 0,
-                'bb':  safe_int(cols[14].get_text(strip=True)) if len(cols)>14 else 0,
-                'so':  safe_int(cols[16].get_text(strip=True)) if len(cols)>16 else 0,
-                'r': 0, 'obp':'-', 'slg':'-', 'ops':'-',
-            }
-    except Exception as e:
-        print(f"  타자 scrape 오류: {e}")
+    for name, pid in KIA_HITTER_IDS.items():
+        d = fetch_fav_player(name, 'hitter', pid)
+        if d:
+            result[name] = d
+    print(f"KIA 타자 수집: {len(result)}명")
     return result
 
 def scrape_kia_pitchers():
-    """Basic1 전체 리그 투수 목록에서 KIA 선수만 필터링 (ERA순)"""
+    """KIA 투수 전체를 개인 상세 페이지에서 수집"""
     result = {}
-    try:
-        res = requests.get(
-            "https://www.koreabaseball.com/Record/Player/PitcherBasic/Basic1.aspx?sortColumn=ERA&sortType=ASC",
-            headers=HEADERS, timeout=15)
-        soup = BeautifulSoup(res.text, "html.parser")
-        table = soup.select_one("table")
-        if not table: return result
-        for row in table.select("tr"):
-            cols = row.select("td")
-            if len(cols) < 5: continue
-            team = cols[2].get_text(strip=True)
-            if team != 'KIA': continue
-            name = cols[1].get_text(strip=True)
-            a = row.select_one("a[href*='playerId']")
-            pid = re.search(r'playerId=(\d+)', a['href']).group(1) if a else ''
-            ip = cols[13].get_text(strip=True) if len(cols)>13 else '0'
-            h  = safe_int(cols[14].get_text(strip=True)) if len(cols)>14 else 0
-            bb = safe_int(cols[16].get_text(strip=True)) if len(cols)>16 else 0
-            try:
-                ip_f = float(ip.replace(' 1/3','.33').replace(' 2/3','.67'))
-                whip = f"{(h+bb)/ip_f:.2f}" if ip_f > 0 else '-'
-            except: whip = '-'
-            result[name] = {
-                'pid': pid,
-                'era': cols[3].get_text(strip=True) or '-',
-                'w':   safe_int(cols[7].get_text(strip=True)) if len(cols)>7 else 0,
-                'l':   safe_int(cols[8].get_text(strip=True)) if len(cols)>8 else 0,
-                'sv':  safe_int(cols[9].get_text(strip=True)) if len(cols)>9 else 0,
-                'hld': safe_int(cols[10].get_text(strip=True)) if len(cols)>10 else 0,
-                'ip': ip, 'h': h, 'bb': bb,
-                'k':   safe_int(cols[18].get_text(strip=True)) if len(cols)>18 else 0,
-                'whip': whip,
-            }
-    except Exception as e:
-        print(f"  투수 scrape 오류: {e}")
+    for name, pid in KIA_PITCHER_IDS.items():
+        d = fetch_fav_player(name, 'pitcher', pid)
+        if d:
+            result[name] = d
+    print(f"KIA 투수 수집: {len(result)}명")
     return result
 
 def scrape_basicold_pages(base_url, is_hitter=True):
