@@ -129,28 +129,28 @@ def fetch_fav_player(name, kind, pid):
                 'ops': g(stat_row1, 10),
             }
         else:
-            # 투수 테이블0: 팀 ERA W L SV HLD IP H BB SO WHIP
-            row = tables[0].select("tr")
-            stat_row = row[1].select("td") if len(row) > 1 else []
+            # 투수 테이블0: 팀(0) ERA(1) G(2) CG(3) SHO(4) W(5) L(6) SV(7) HLD(8) WPCT(9) TBF(10) NP(11) IP(12) H(13)
+            # 투수 테이블1: SAC(0) SF(1) BB(2) IBB(3) SO(4) WP(5) BK(6) R(7) ER(8) BSV(9) WHIP(10)
+            row0 = tables[0].select("tr")
+            row1 = tables[1].select("tr") if len(tables) > 1 else []
+            s0 = row0[1].select("td") if len(row0) > 1 else []
+            s1 = row1[1].select("td") if len(row1) > 1 else []
             def g(r, i): return r[i].get_text(strip=True) if len(r) > i else '-'
-            ip = g(stat_row, 6)
-            h  = safe_int(g(stat_row, 7))
-            bb = safe_int(g(stat_row, 8))
-            try:
-                ip_f = float(ip.replace(' 1/3','.33').replace(' 2/3','.67'))
-                whip = f"{(h+bb)/ip_f:.2f}" if ip_f > 0 else '-'
-            except: whip = '-'
+            ip = g(s0, 12)
+            h  = safe_int(g(s0, 13))
+            bb = safe_int(g(s1, 2))
+            whip = g(s1, 10)
             return {
                 'pid': pid,
-                'era': g(stat_row, 1),
-                'w':   safe_int(g(stat_row, 2)),
-                'l':   safe_int(g(stat_row, 3)),
-                'sv':  safe_int(g(stat_row, 4)),
-                'hld': safe_int(g(stat_row, 5)),
+                'era': g(s0, 1),
+                'w':   safe_int(g(s0, 5)),
+                'l':   safe_int(g(s0, 6)),
+                'sv':  safe_int(g(s0, 7)),
+                'hld': safe_int(g(s0, 8)),
                 'ip':  ip,
                 'h':   h,
                 'bb':  bb,
-                'k':   safe_int(g(stat_row, 9)),
+                'k':   safe_int(g(s1, 4)),
                 'whip': whip,
             }
     except Exception as e:
