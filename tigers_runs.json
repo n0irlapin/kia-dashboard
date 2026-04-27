@@ -1,0 +1,200 @@
+{
+  "season": "2026",
+  "updated_at": "2026-04-27T15:50:27+09:00",
+  "total_runs_allowed": 115,
+  "games_played": 24,
+  "games": [
+    {
+      "date": "2026-03-28",
+      "opp": "SSG",
+      "home_away": "A",
+      "runs_scored": 6,
+      "runs_allowed": 7,
+      "status": "END"
+    },
+    {
+      "date": "2026-03-29",
+      "opp": "SSG",
+      "home_away": "A",
+      "runs_scored": 6,
+      "runs_allowed": 11,
+      "status": "END"
+    },
+    {
+      "date": "2026-03-31",
+      "opp": "LG",
+      "home_away": "A",
+      "runs_scored": 7,
+      "runs_allowed": 2,
+      "status": "END"
+    },
+    {
+      "date": "2026-04-01",
+      "opp": "LG",
+      "home_away": "A",
+      "runs_scored": 2,
+      "runs_allowed": 7,
+      "status": "END"
+    },
+    {
+      "date": "2026-04-02",
+      "opp": "LG",
+      "home_away": "A",
+      "runs_scored": 1,
+      "runs_allowed": 2,
+      "status": "END"
+    },
+    {
+      "date": "2026-04-03",
+      "opp": "NC",
+      "home_away": "H",
+      "runs_scored": 2,
+      "runs_allowed": 5,
+      "status": "END"
+    },
+    {
+      "date": "2026-04-04",
+      "opp": "NC",
+      "home_away": "H",
+      "runs_scored": 0,
+      "runs_allowed": 6,
+      "status": "END"
+    },
+    {
+      "date": "2026-04-05",
+      "opp": "NC",
+      "home_away": "H",
+      "runs_scored": 3,
+      "runs_allowed": 0,
+      "status": "END"
+    },
+    {
+      "date": "2026-04-07",
+      "opp": "삼성",
+      "home_away": "H",
+      "runs_scored": 3,
+      "runs_allowed": 10,
+      "status": "END"
+    },
+    {
+      "date": "2026-04-08",
+      "opp": "삼성",
+      "home_away": "H",
+      "runs_scored": 15,
+      "runs_allowed": 5,
+      "status": "END"
+    },
+    {
+      "date": "2026-04-10",
+      "opp": "한화",
+      "home_away": "A",
+      "runs_scored": 6,
+      "runs_allowed": 5,
+      "status": "END"
+    },
+    {
+      "date": "2026-04-11",
+      "opp": "한화",
+      "home_away": "A",
+      "runs_scored": 6,
+      "runs_allowed": 5,
+      "status": "END"
+    },
+    {
+      "date": "2026-04-12",
+      "opp": "한화",
+      "home_away": "A",
+      "runs_scored": 9,
+      "runs_allowed": 3,
+      "status": "END"
+    },
+    {
+      "date": "2026-04-14",
+      "opp": "키움",
+      "home_away": "H",
+      "runs_scored": 6,
+      "runs_allowed": 2,
+      "status": "END"
+    },
+    {
+      "date": "2026-04-15",
+      "opp": "키움",
+      "home_away": "H",
+      "runs_scored": 7,
+      "runs_allowed": 5,
+      "status": "END"
+    },
+    {
+      "date": "2026-04-16",
+      "opp": "키움",
+      "home_away": "H",
+      "runs_scored": 5,
+      "runs_allowed": 1,
+      "status": "END"
+    },
+    {
+      "date": "2026-04-17",
+      "opp": "두산",
+      "home_away": "A",
+      "runs_scored": 7,
+      "runs_allowed": 3,
+      "status": "END"
+    },
+    {
+      "date": "2026-04-18",
+      "opp": "두산",
+      "home_away": "A",
+      "runs_scored": 4,
+      "runs_allowed": 5,
+      "status": "END"
+    },
+    {
+      "date": "2026-04-19",
+      "opp": "두산",
+      "home_away": "A",
+      "runs_scored": 3,
+      "runs_allowed": 6,
+      "status": "END"
+    },
+    {
+      "date": "2026-04-21",
+      "opp": "KT",
+      "home_away": "A",
+      "runs_scored": 5,
+      "runs_allowed": 6,
+      "status": "END"
+    },
+    {
+      "date": "2026-04-22",
+      "opp": "KT",
+      "home_away": "A",
+      "runs_scored": 3,
+      "runs_allowed": 8,
+      "status": "END"
+    },
+    {
+      "date": "2026-04-23",
+      "opp": "KT",
+      "home_away": "A",
+      "runs_scored": 3,
+      "runs_allowed": 8,
+      "status": "END"
+    },
+    {
+      "date": "2026-04-24",
+      "opp": "롯데",
+      "home_away": "H",
+      "runs_scored": 4,
+      "runs_allowed": 0,
+      "status": "END"
+    },
+    {
+      "date": "2026-04-25",
+      "opp": "롯데",
+      "home_away": "H",
+      "runs_scored": 4,
+      "runs_allowed": 3,
+      "status": "END"
+    }
+  ]
+}

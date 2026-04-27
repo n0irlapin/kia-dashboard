@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>KIA 실점 러닝 트래커</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --tigers-red:#ea0029;
+    --tigers-red-dark:#b30020;
+    --ink:#0a0a0a;
+    --ink-2:#1a1a1a;
+    --cream:#f4ead5;
+    --paper:#faf6ec;
+    --line:#1a1a1a;
+    --gray:#7a7a7a;
+    --success:#1f7a3a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans KR',sans-serif;min-height:100vh}
+  body{
+    background:
+      radial-gradient(circle at 90% 0%, rgba(234,0,41,.08), transparent 40%),
+      radial-gradient(circle at 0% 90%, rgba(10,10,10,.05), transparent 40%),
+      var(--paper);
+    padding:24px 16px 80px;
+  }
+  .grain{
+    position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.35;mix-blend-mode:multiply;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .08 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+  .wrap{max-width:760px;margin:0 auto;position:relative;z-index:2}
+
+  /* ---------- header ---------- */
+  header{
+    border:2px solid var(--ink);
+    background:var(--ink);
+    color:var(--cream);
+    padding:18px 22px;
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    position:relative;
+    box-shadow:6px 6px 0 var(--tigers-red);
+  }
+  .brand{display:flex;align-items:center;gap:12px}
+  .stripe{
+    width:10px;height:44px;
+    background:repeating-linear-gradient(
+      to bottom,
+      var(--tigers-red) 0 6px,
+      var(--ink) 6px 12px
+    );
+  }
+  .logo-txt{display:flex;flex-direction:column;line-height:1}
+  .logo-txt .small{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.2em;color:var(--tigers-red);margin-bottom:4px}
+  .logo-txt .big{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:.04em}
+  .season-pill{
+    font-family:'JetBrains Mono',monospace;font-size:11px;
+    border:1px solid var(--cream);padding:4px 10px;border-radius:999px;
+    color:var(--cream);
+  }
+
+  /* ---------- title ---------- */
+  .title{margin:28px 0 16px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  .title h1{
+    font-family:'Bebas Neue',sans-serif;font-size:54px;line-height:.95;letter-spacing:.01em;
+  }
+  .title .sub{font-size:13px;color:var(--gray);font-weight:500}
+  .rule{height:2px;background:var(--ink);margin:8px 0 22px}
+
+  /* ---------- big number card ---------- */
+  .debt-card{
+    border:2px solid var(--ink);
+    background:var(--cream);
+    padding:28px 24px 24px;
+    position:relative;
+    margin-bottom:18px;
+    overflow:hidden;
+  }
+  .debt-card::before{
+    content:"";position:absolute;inset:0;
+    background-image:
+      linear-gradient(var(--ink) 1px, transparent 1px),
+      linear-gradient(90deg, var(--ink) 1px, transparent 1px);
+    background-size:40px 40px;
+    opacity:.035;
+    pointer-events:none;
+  }
+  .debt-label{
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.2em;
+    color:var(--tigers-red);font-weight:700;
+  }
+  .debt-num{
+    font-family:'Bebas Neue',sans-serif;
+    font-size:clamp(90px,18vw,160px);
+    line-height:.88;
+    color:var(--ink);
+    display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;
+    margin-top:4px;
+  }
+  .debt-num .unit{font-size:.28em;color:var(--tigers-red);font-family:'Bebas Neue',sans-serif;letter-spacing:.05em;padding-bottom:14px}
+  .debt-num.done{color:var(--success)}
+  .debt-sub{
+    margin-top:10px;display:flex;gap:24px;flex-wrap:wrap;
+    font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-2);
+  }
+  .debt-sub b{color:var(--tigers-red);font-weight:700}
+  .progress{
+    height:14px;background:#fff;border:2px solid var(--ink);margin-top:18px;position:relative;overflow:hidden;
+  }
+  .progress-fill{
+    height:100%;
+    background:repeating-linear-gradient(45deg, var(--tigers-red) 0 8px, var(--tigers-red-dark) 8px 16px);
+    transition:width .6s cubic-bezier(.2,.8,.2,1);
+  }
+  .progress-lbl{
+    margin-top:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gray);
+    display:flex;justify-content:space-between;
+  }
+
+  /* ---------- stat row ---------- */
+  .stats{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;
+  }
+  .stat{
+    border:2px solid var(--ink);background:#fff;padding:14px 14px 12px;position:relative;
+  }
+  .stat .k{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.18em;color:var(--gray)}
+  .stat .v{font-family:'Bebas Neue',sans-serif;font-size:32px;line-height:1;margin-top:6px}
+  .stat .u{font-size:.45em;color:var(--tigers-red);margin-left:3px}
+
+  /* ---------- today card ---------- */
+  .today{
+    border:2px solid var(--ink);background:var(--ink);color:var(--cream);
+    padding:18px 20px;margin-bottom:18px;position:relative;
+  }
+  .today .hd{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.2em;color:var(--tigers-red);margin-bottom:8px}
+  .today .row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .today .big{font-family:'Bebas Neue',sans-serif;font-size:44px;line-height:1}
+  .today .mid{font-family:'IBM Plex Sans KR',sans-serif;font-size:14px;opacity:.85}
+
+  /* ---------- input ---------- */
+  .input-card{
+    border:2px solid var(--ink);background:#fff;padding:18px 20px;margin-bottom:18px;
+  }
+  .input-card h3{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.04em;margin-bottom:10px}
+  .input-row{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap}
+  .input-row input[type=number]{
+    flex:1;min-width:120px;
+    font-family:'JetBrains Mono',monospace;font-size:22px;
+    border:2px solid var(--ink);background:var(--paper);
+    padding:10px 14px;outline:none;
+  }
+  .input-row input[type=number]:focus{background:#fff;box-shadow:3px 3px 0 var(--tigers-red)}
+  .input-row input[type=date]{
+    font-family:'JetBrains Mono',monospace;font-size:13px;
+    border:2px solid var(--ink);background:var(--paper);
+    padding:10px 12px;outline:none;
+  }
+  .btn{
+    font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:.05em;
+    background:var(--tigers-red);color:#fff;border:2px solid var(--ink);
+    padding:10px 22px;cursor:pointer;transition:transform .1s, box-shadow .1s;
+    box-shadow:4px 4px 0 var(--ink);
+  }
+  .btn:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--ink)}
+  .btn:active{transform:translate(2px,2px);box-shadow:0 0 0 var(--ink)}
+  .btn.ghost{background:#fff;color:var(--ink)}
+  .quick{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+  .quick button{
+    font-family:'JetBrains Mono',monospace;font-size:12px;
+    border:1.5px solid var(--ink);background:var(--paper);padding:6px 12px;cursor:pointer;
+  }
+  .quick button:hover{background:var(--ink);color:var(--cream)}
+
+  /* ---------- log ---------- */
+  .log-card{border:2px solid var(--ink);background:#fff;padding:0;margin-bottom:18px}
+  .log-hd{padding:14px 20px;border-bottom:2px solid var(--ink);display:flex;justify-content:space-between;align-items:center;background:var(--cream)}
+  .log-hd h3{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.04em}
+  .log-hd .count{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gray)}
+  .log-list{max-height:300px;overflow-y:auto}
+  .log-row{
+    display:grid;grid-template-columns:90px 1fr auto auto;gap:12px;align-items:center;
+    padding:10px 20px;border-bottom:1px solid #eee;font-size:14px;
+  }
+  .log-row:last-child{border-bottom:0}
+  .log-row .date{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gray)}
+  .log-row .km{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--tigers-red)}
+  .log-row .km .u{font-size:.5em;color:var(--ink);margin-left:2px}
+  .log-row .memo{font-size:13px;color:var(--ink-2)}
+  .log-row .del{
+    background:transparent;border:0;color:var(--gray);cursor:pointer;font-size:16px;padding:4px 8px;
+  }
+  .log-row .del:hover{color:var(--tigers-red)}
+  .log-empty{padding:30px 20px;text-align:center;color:var(--gray);font-size:13px}
+
+  /* ---------- schedule ---------- */
+  .sched-card{border:2px solid var(--ink);background:#fff;margin-bottom:18px;overflow:hidden}
+  .sched-hd{padding:14px 20px;border-bottom:2px solid var(--ink);background:var(--ink);color:var(--cream);display:flex;justify-content:space-between;align-items:center}
+  .sched-hd h3{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.04em}
+  .sched-hd .refresh{
+    font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cream);
+    background:transparent;border:1px solid var(--cream);padding:4px 10px;cursor:pointer;
+  }
+  .sched-hd .refresh:hover{background:var(--cream);color:var(--ink)}
+  .sched-list{padding:0}
+  .sched-row{
+    display:grid;grid-template-columns:70px 1fr auto;gap:12px;align-items:center;
+    padding:10px 20px;border-bottom:1px solid #eee;font-size:14px;
+  }
+  .sched-row:last-child{border-bottom:0}
+  .sched-row .date{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gray)}
+  .sched-row .match{font-weight:500}
+  .sched-row .match .vs{color:var(--gray);margin:0 6px;font-size:12px}
+  .sched-row .runs{font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--tigers-red)}
+  .sched-row .runs .me{color:var(--ink)}
+  .sched-row .runs .sep{color:var(--gray);margin:0 4px}
+
+  /* ---------- footer ---------- */
+  .src{
+    font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gray);
+    text-align:center;padding:14px 10px;letter-spacing:.05em;
+  }
+  .src a{color:var(--tigers-red);text-decoration:none}
+  .loading{opacity:.4;pointer-events:none}
+
+  @media (max-width:500px){
+    .stats{grid-template-columns:repeat(3,1fr);gap:6px}
+    .stat{padding:10px 8px}
+    .stat .v{font-size:24px}
+    .log-row{grid-template-columns:70px 1fr auto auto;padding:10px 14px}
+    .sched-row{grid-template-columns:60px 1fr auto;padding:10px 14px}
+    header{padding:14px}
+  }
+</style>
+</head>
+<body>
+<div class="grain"></div>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <div class="stripe"></div>
+      <div class="logo-txt">
+        <span class="small">KIA TIGERS × RUN</span>
+        <span class="big">실점 = 거리</span>
+      </div>
+    </div>
+    <span class="season-pill" id="season-pill">2026 SEASON</span>
+  </header>
+
+  <div class="title">
+    <h1>뛰어서 갚자</h1>
+    <span class="sub">실점 1점 = 1km</span>
+  </div>
+  <div class="rule"></div>
+
+  <!-- 큰 숫자 카드: 남은 거리 -->
+  <div class="debt-card">
+    <div class="debt-label" id="debt-label">남은 거리</div>
+    <div class="debt-num" id="debt-num"><span id="debt-val">—</span><span class="unit">KM</span></div>
+    <div class="debt-sub">
+      <span>누적 실점 <b id="total-runs">—</b>점</span>
+      <span>누적 이동 <b id="total-km">—</b>km</span>
+    </div>
+    <div class="progress"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+    <div class="progress-lbl">
+      <span id="progress-txt">진행률 0%</span>
+      <span id="update-ts">—</span>
+    </div>
+  </div>
+
+  <!-- 3개 스탯 -->
+  <div class="stats">
+    <div class="stat">
+      <div class="k">오늘 할당</div>
+      <div class="v" id="today-alloc">0<span class="u">km</span></div>
+    </div>
+    <div class="stat">
+      <div class="k">어제 실점</div>
+      <div class="v" id="yesterday-runs">0<span class="u">점</span></div>
+    </div>
+    <div class="stat">
+      <div class="k">평균/경기</div>
+      <div class="v" id="avg-runs">0<span class="u">점</span></div>
+    </div>
+  </div>
+
+  <!-- 오늘 요약 -->
+  <div class="today" id="today-card">
+    <div class="hd">TODAY</div>
+    <div class="row">
+      <div class="big" id="today-big">—</div>
+      <div class="mid" id="today-mid">불러오는 중…</div>
+    </div>
+  </div>
+
+  <!-- 입력 -->
+  <div class="input-card">
+    <h3>오늘 뛴 거리 입력</h3>
+    <div class="input-row">
+      <input type="number" id="inp-km" placeholder="km" step="0.1" min="0" />
+      <input type="date" id="inp-date" />
+      <button class="btn" id="btn-add">기록 추가</button>
+    </div>
+    <div class="quick">
+      <button data-km="1">+1km</button>
+      <button data-km="3">+3km</button>
+      <button data-km="5">+5km</button>
+      <button data-km="10">+10km</button>
+    </div>
+  </div>
+
+  <!-- 로그 -->
+  <div class="log-card">
+    <div class="log-hd">
+      <h3>러닝 로그</h3>
+      <span class="count" id="log-count">0건</span>
+    </div>
+    <div class="log-list" id="log-list">
+      <div class="log-empty">아직 기록이 없어요. 첫 기록을 남겨보세요.</div>
+    </div>
+  </div>
+
+  <!-- 경기별 실점 -->
+  <div class="sched-card">
+    <div class="sched-hd">
+      <h3>최근 경기 실점</h3>
+      <button class="refresh" id="btn-refresh">새로고침</button>
+    </div>
+    <div class="sched-list" id="sched-list">
+      <div class="log-empty">불러오는 중…</div>
+    </div>
+  </div>
+
+  <div class="src">
+    DATA · <a href="https://n0irlapin.github.io/kia-dashboard/" target="_blank" rel="noopener">kia-dashboard</a> · KBO 공식
+  </div>
+</div>
+
+<script>
+(function(){
+  const LS_KEY = 'kia_runs_log_v1';
+  const SEASON_OPEN = '2026-03-28'; // 개막일
+
+  // JSON 소스: 같은 레포에 tigers_runs.json 이 배포될 예정
+  // - 같은 origin(github pages)에 두면 CORS 없이 fetch 가능
+  // - 경로: /kia-dashboard/tigers_runs.json
+  const DATA_URL = 'https://n0irlapin.github.io/kia-dashboard/tigers_runs.json';
+
+  // ---------------- helpers ----------------
+  const $ = (id) => document.getElementById(id);
+  const fmt = (n, d=1) => {
+    if(!isFinite(n)) return '0';
+    const rounded = Math.round(n * Math.pow(10,d)) / Math.pow(10,d);
+    return rounded.toString();
+  };
+  const todayStr = () => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const day = String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${day}`;
+  };
+  const yesterdayStr = () => {
+    const d = new Date();
+    d.setDate(d.getDate()-1);
+    return d.toISOString().slice(0,10);
+  };
+
+  // ---------------- localStorage ----------------
+  function loadLog(){
+    try{
+      const raw = localStorage.getItem(LS_KEY);
+      if(!raw) return [];
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr : [];
+    }catch(e){ return []; }
+  }
+  function saveLog(list){
+    localStorage.setItem(LS_KEY, JSON.stringify(list));
+  }
+
+  // ---------------- state ----------------
+  let runsData = null; // {total_runs_allowed, games:[{date, opp, home_away, runs_scored, runs_allowed}], updated_at}
+  let runLog = loadLog();
+
+  // ---------------- data fetch ----------------
+  async function fetchRunsData(){
+    try{
+      const res = await fetch(DATA_URL + '?t=' + Date.now(), {cache:'no-store'});
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      const json = await res.json();
+      runsData = json;
+      return json;
+    }catch(e){
+      console.warn('[tigers_runs.json] fetch 실패:', e);
+      runsData = null;
+      return null;
+    }
+  }
+
+  // ---------------- render ----------------
+  function totalKmRan(){
+    return runLog.reduce((a,b) => a + (Number(b.km)||0), 0);
+  }
+  function runsOnDate(dateStr){
+    if(!runsData || !runsData.games) return 0;
+    return runsData.games
+      .filter(g => g.date === dateStr)
+      .reduce((a,b) => a + (Number(b.runs_allowed)||0), 0);
+  }
+
+  function render(){
+    // 누적 실점
+    const totalRuns = runsData ? (runsData.total_runs_allowed ?? 0) : 0;
+    const ranKm = totalKmRan();
+    const remaining = Math.max(0, totalRuns - ranKm);
+
+    $('total-runs').textContent = totalRuns;
+    $('total-km').textContent = fmt(ranKm,1);
+
+    const debtEl = $('debt-num');
+    const debtVal = $('debt-val');
+    const debtLabel = $('debt-label');
+
+    if(totalRuns === 0 && ranKm === 0){
+      debtVal.textContent = '0';
+      debtEl.classList.remove('done');
+      debtLabel.textContent = '데이터 대기';
+    } else if(remaining <= 0 && totalRuns > 0){
+      debtVal.textContent = fmt(ranKm - totalRuns, 1);
+      debtEl.classList.add('done');
+      debtLabel.textContent = '초과 달성 (+km)';
+    } else {
+      debtVal.textContent = fmt(remaining, 1);
+      debtEl.classList.remove('done');
+      debtLabel.textContent = '남은 거리';
+    }
+
+    // 진행률
+    const pct = totalRuns > 0 ? Math.min(100, (ranKm / totalRuns) * 100) : 0;
+    $('progress-fill').style.width = pct + '%';
+    $('progress-txt').textContent = `진행률 ${fmt(pct,1)}%`;
+
+    // 업데이트 시각
+    if(runsData && runsData.updated_at){
+      $('update-ts').textContent = 'UPD ' + runsData.updated_at.slice(0,16).replace('T',' ');
+    } else {
+      $('update-ts').textContent = '데이터 없음';
+    }
+
+    // 3개 스탯
+    const tStr = todayStr();
+    const yStr = yesterdayStr();
+    $('today-alloc').innerHTML = runsOnDate(tStr) + '<span class="u">km</span>';
+    $('yesterday-runs').innerHTML = runsOnDate(yStr) + '<span class="u">점</span>';
+
+    if(runsData && runsData.games && runsData.games.length > 0){
+      const games = runsData.games;
+      const total = games.reduce((a,b) => a + (Number(b.runs_allowed)||0), 0);
+      const avg = games.length > 0 ? total / games.length : 0;
+      $('avg-runs').innerHTML = fmt(avg,1) + '<span class="u">점</span>';
+    } else {
+      $('avg-runs').innerHTML = '0<span class="u">점</span>';
+    }
+
+    // 오늘 카드
+    renderToday();
+
+    // 로그
+    renderLog();
+
+    // 경기 리스트
+    renderSchedule();
+  }
+
+  function renderToday(){
+    const t = todayStr();
+    const y = yesterdayStr();
+    const tBig = $('today-big');
+    const tMid = $('today-mid');
+
+    // 오늘 경기가 있는지, 어제 경기가 있는지
+    if(!runsData || !runsData.games){
+      tBig.textContent = '—';
+      tMid.textContent = '데이터 불러오기 대기 중';
+      return;
+    }
+
+    const todayGames = runsData.games.filter(g => g.date === t);
+    const yesterdayGames = runsData.games.filter(g => g.date === y);
+
+    if(todayGames.length > 0){
+      const sum = todayGames.reduce((a,b) => a + (Number(b.runs_allowed)||0), 0);
+      const opps = todayGames.map(g => g.opp).join(', ');
+      tBig.textContent = sum + 'km';
+      tMid.textContent = `오늘 경기 ${opps} · ${sum}실점 할당`;
+    } else if(yesterdayGames.length > 0){
+      const sum = yesterdayGames.reduce((a,b) => a + (Number(b.runs_allowed)||0), 0);
+      const opps = yesterdayGames.map(g => g.opp).join(', ');
+      tBig.textContent = sum + 'km';
+      tMid.textContent = `어제 ${opps}에 ${sum}실점 → ${sum}km 할당`;
+    } else {
+      tBig.textContent = '0km';
+      tMid.textContent = '오늘/어제 경기 없음 · 쉬는 날';
+    }
+  }
+
+  function renderLog(){
+    const list = $('log-list');
+    const count = $('log-count');
+    count.textContent = runLog.length + '건';
+    if(runLog.length === 0){
+      list.innerHTML = '<div class="log-empty">아직 기록이 없어요. 첫 기록을 남겨보세요.</div>';
+      return;
+    }
+    const sorted = [...runLog].sort((a,b) => b.date.localeCompare(a.date));
+    list.innerHTML = sorted.map((r, i) => `
+      <div class="log-row">
+        <span class="date">${r.date.slice(5)}</span>
+        <span class="memo">${r.memo || ''}</span>
+        <span class="km">${fmt(r.km,1)}<span class="u">km</span></span>
+        <button class="del" data-id="${r.id}" title="삭제">×</button>
+      </div>
+    `).join('');
+    list.querySelectorAll('.del').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-id');
+        runLog = runLog.filter(r => r.id !== id);
+        saveLog(runLog);
+        render();
+      });
+    });
+  }
+
+  function renderSchedule(){
+    const box = $('sched-list');
+    if(!runsData || !runsData.games || runsData.games.length === 0){
+      box.innerHTML = '<div class="log-empty">경기 데이터를 불러올 수 없습니다.<br><span style="font-size:11px;color:#999">데이터 파일(tigers_runs.json) 생성 전일 수 있어요.</span></div>';
+      return;
+    }
+    const games = [...runsData.games].sort((a,b) => b.date.localeCompare(a.date)).slice(0, 15);
+    box.innerHTML = games.map(g => {
+      const ha = g.home_away === 'H' ? 'vs' : '@';
+      return `
+        <div class="sched-row">
+          <span class="date">${g.date.slice(5)}</span>
+          <span class="match">KIA <span class="vs">${ha}</span> ${g.opp}</span>
+          <span class="runs"><span class="me">${g.runs_scored ?? '-'}</span><span class="sep">:</span>${g.runs_allowed ?? '-'}</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ---------------- events ----------------
+  function addRun(km, date, memo){
+    if(!(km > 0)) return;
+    runLog.push({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+      km: Number(km),
+      date: date || todayStr(),
+      memo: memo || ''
+    });
+    saveLog(runLog);
+    render();
+  }
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    $('inp-date').value = todayStr();
+
+    $('btn-add').addEventListener('click', () => {
+      const km = parseFloat($('inp-km').value);
+      const date = $('inp-date').value || todayStr();
+      if(!(km > 0)){
+        $('inp-km').focus();
+        return;
+      }
+      addRun(km, date);
+      $('inp-km').value = '';
+    });
+
+    $('inp-km').addEventListener('keydown', (e) => {
+      if(e.key === 'Enter') $('btn-add').click();
+    });
+
+    document.querySelectorAll('.quick button').forEach(b => {
+      b.addEventListener('click', () => {
+        const km = parseFloat(b.getAttribute('data-km'));
+        addRun(km, todayStr(), `+${km}km 빠른기록`);
+      });
+    });
+
+    $('btn-refresh').addEventListener('click', async () => {
+      $('btn-refresh').textContent = '불러오는 중…';
+      await fetchRunsData();
+      render();
+      $('btn-refresh').textContent = '새로고침';
+    });
+
+    // 초기 렌더
+    render();
+
+    // 데이터 로드
+    await fetchRunsData();
+    render();
+  });
+})();
+</script>
+</body>
+</html>
