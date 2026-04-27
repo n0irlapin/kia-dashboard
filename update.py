@@ -18,7 +18,6 @@ DAY_MAP={'MON':'월','TUE':'화','WED':'수','THU':'목','FRI':'금','SAT':'토'
 VALID_TEAMS=set(TEAM_ENG_KOR.keys())
 
 PLAYER_INFO = {
-    # 타자: 번호, 포지션
     '카스트로':{'num':'53','pos':'외야수'}, '나성범':  {'num':'22','pos':'외야수'},
     '김선빈':  {'num':'3', 'pos':'내야수'},    '김도영':  {'num':'5', 'pos':'내야수'},
     '데일':    {'num':'58','pos':'내야수'},    '박민':    {'num':'2', 'pos':'내야수'},
@@ -28,7 +27,6 @@ PLAYER_INFO = {
     '고종욱':  {'num':'30','pos':'외야수'},   '김규성':  {'num':'25','pos':'내야수'},
     '이창진':  {'num':'32','pos':'외야수'},   '박정우':  {'num':'38','pos':'외야수'},
     '김태군':  {'num':'57','pos':'포수'},
-    # 투수: 번호, 포지션
     '네일':    {'num':'47','pos':'선발'},     '올러':    {'num':'49','pos':'선발'},
     '양현종':  {'num':'11','pos':'선발'},     '이의리':  {'num':'35','pos':'선발'},
     '김태형':  {'num':'17','pos':'선발'},     '최지민':  {'num':'39','pos':'불펜'},
@@ -45,7 +43,6 @@ FAV_PLAYER_IDS = {
     '박재현': ('hitter', '55636'),
     '최지민': ('pitcher', '52639'),
 }
-# KIA 타자 전체 playerId (개인 상세 페이지 직접 수집용)
 KIA_HITTER_IDS = {
     '카스트로': '56626', '나성범': '62947', '김선빈': '78603', '김도영': '52605',
     '데일':    '56632', '박민':  '50657', '오선우': '69636', '박재현': '55636',
@@ -53,7 +50,6 @@ KIA_HITTER_IDS = {
     '고종욱':  '61353', '김규성': '66614', '이창진': '64560', '박정우': '67609',
     '김태군':  '78122',
 }
-# KIA 투수 전체 playerId
 KIA_PITCHER_IDS = {
     '네일':   '54640', '올러':   '55633', '양현종': '77637', '이의리': '51648',
     '김태형': '55610', '최지민': '52639', '성영탁': '54610', '이태양': '60768',
@@ -61,9 +57,7 @@ KIA_PITCHER_IDS = {
     '김시훈': '68928', '전상현': '66609', '홍민규': '55267', '황동하': '52641',
 }
 
-# ============================================================
-# tigers_runs.json (러닝 트래커용) 시즌 개막일
-# ============================================================
+# tigers_runs.json 시즌 개막일
 SEASON_OPEN = "2026-03-28"
 
 
@@ -78,7 +72,6 @@ def safe_avg(s):
     except: return '-'
 
 def scrape_kia_hitters():
-    """KIA 타자 전체를 개인 상세 페이지에서 수집 후 타율순 정렬"""
     result = {}
     for name, pid in KIA_HITTER_IDS.items():
         d = fetch_fav_player(name, 'hitter', pid)
@@ -88,7 +81,6 @@ def scrape_kia_hitters():
     return result
 
 def scrape_kia_pitchers():
-    """KIA 투수 전체를 개인 상세 페이지에서 수집"""
     result = {}
     for name, pid in KIA_PITCHER_IDS.items():
         d = fetch_fav_player(name, 'pitcher', pid)
@@ -98,12 +90,10 @@ def scrape_kia_pitchers():
     return result
 
 def scrape_basicold_pages(base_url, is_hitter=True):
-    """하위 호환용 — scrape_kia_hitters/pitchers로 대체됨"""
     if is_hitter: return scrape_kia_hitters()
     else: return scrape_kia_pitchers()
 
 def fetch_fav_player(name, kind, pid):
-    """즐겨찾기 선수 개인 상세 페이지에서 시즌 스탯 수집"""
     try:
         path = 'HitterDetail' if kind == 'hitter' else 'PitcherDetail'
         url = f"https://www.koreabaseball.com/Record/Player/{path}/Basic.aspx?playerId={pid}"
@@ -178,171 +168,8 @@ def get_standings():
         print(f"순위: {len(out)}팀"); return out
     except Exception as e: print(f"standings error: {e}"); return []
 
-def _parse_schedule_table(table, now, games, next_game_ref):
-    cur_date=""
-    for row in table.select("tr"):
-        cols=row.select("td")
-        if not cols: continue
-        first=cols[0].get_text(strip=True)
-        if re.match(r'\d{2}\.\d{2}\(\w+\)',first): cur_date=first
-        col_t=[c.get_text(strip=True).upper() for c in cols]
-        col_o=[c.get_text(strip=True) for c in cols]
-        if 'KIA' not in col_t or not cur_date: continue
-        dm=re.match(r'(\d{2})\.(\d{2})\((\w+)\)',cur_date)
-        if not dm: continue
-        mo,da,de=int(dm.group(1)),int(dm.group(2)),dm.group(3)
-        date_str=f"{cur_date[:5]}({DAY_MAP.get(de,'')})"
-        found=False
-        for i,orig in enumerate(col_o):
-            sm=re.match(r'^(\d{1,2}):(\d{1,2})$',orig)
-            if not sm or i==0 or i>=len(col_t)-1: continue
-            away,home=col_t[i-1],col_t[i+1]
-            if away not in VALID_TEAMS or home not in VALID_TEAMS: continue
-            if 'KIA' not in away and 'KIA' not in home: continue
-            as_,hs_=int(sm.group(1)),int(sm.group(2))
-            if 'KIA' in away: ks,os_,oe,vt=as_,hs_,home,'원정'
-            else: ks,os_,oe,vt=hs_,as_,away,'홈'
-            op=TEAM_ENG_KOR.get(oe,oe).split(' ')[0]
-            key=f"{date_str}-{op}"
-            if not any(g['date']==date_str and g['opp']==f"vs {op}" for g in games):
-                games.append({"date":date_str,"opp":f"vs {op}","score":f"{ks}-{os_}",
-                              "result":'win' if ks>os_ else('lose' if ks<os_ else 'draw'),"venue":vt})
-            found=True; break
-        if not found:
-            for i,orig in enumerate(col_o):
-                tm=re.match(r'^(\d{2}):(\d{2})$',orig)
-                if not tm or i==0 or i>=len(col_t)-1: continue
-                h_,m_=int(tm.group(1)),int(tm.group(2))
-                if h_<10 or h_>23: continue
-                away,home=col_t[i-1],col_t[i+1]
-                if away not in VALID_TEAMS or home not in VALID_TEAMS: continue
-                if 'KIA' not in away and 'KIA' not in home: continue
-                oe=home if 'KIA' in away else away
-                vt='원정' if 'KIA' in away else '홈'
-                op_kor=TEAM_ENG_KOR.get(oe,oe)
-                op_short=op_kor.split(' ')[0]
-                try:
-                    fdt=datetime(now.year,mo,da,h_,m_)
-                    fdt_str=fdt.strftime('%Y-%m-%dT%H:%M:%S')
-                    if not any(g['date']==date_str and g['opp']==f"vs {op_short}" for g in games):
-                        if next_game_ref[0] is None and fdt>=now:
-                            next_game_ref[0]={"date":fdt_str,"opponent":op_kor,"venue":"","home":vt=='홈'}
-                        games.append({"date":date_str,"opp":f"vs {op_short}",
-                                      "score":orig,"result":"upcoming","venue":vt,"fullDate":fdt_str})
-                except: pass
-                break
-
-def _scrape_monthly_schedule(year, month, now, games, next_game_ref):
-    import json as _json
-    from bs4 import BeautifulSoup as _BS
-    DAY_KOR = ['월','화','수','목','금','토','일']
-    KOR_SHORT = {
-        'KIA':'KIA','LG':'LG','삼성':'삼성','한화':'한화',
-        'SSG':'SSG','NC':'NC','KT':'KT','롯데':'롯데','두산':'두산','키움':'키움'
-    }
-    KOR_FULL = {
-        'KIA':'KIA 타이거즈','LG':'LG 트윈스','삼성':'삼성 라이온즈','한화':'한화 이글스',
-        'SSG':'SSG 랜더스','NC':'NC 다이노스','KT':'KT 위즈','롯데':'롯데 자이언츠',
-        '두산':'두산 베어스','키움':'키움 히어로즈'
-    }
-    try:
-        res = requests.post(
-            "https://www.koreabaseball.com/ws/Schedule.asmx/GetMonthSchedule",
-            headers={**HEADERS, 'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8',
-                     'X-Requested-With':'XMLHttpRequest'},
-            data={'leId':'1','srIdList':'0,9,6','seasonId':str(year),'gameMonth':f'{month:02d}'},
-            timeout=15
-        )
-        if res.status_code != 200:
-            print(f"  월간스케줄 API 오류: {res.status_code}")
-            return False
-
-        data = _json.loads(res.text)
-        before = len(games)
-
-        for row_obj in data.get('rows', []):
-            for cell in row_obj.get('row', []):
-                html = cell.get('Text', '')
-                cls  = cell.get('Class', '') or ''
-                if not html or 'KIA' not in html:
-                    continue
-                soup = _BS(html, 'html.parser')
-
-                day_tag = soup.find('li', class_='dayNum')
-                if not day_tag: continue
-                try:
-                    da = int(day_tag.get_text(strip=True))
-                    fdt_base = datetime(year, month, da)
-                    dow = DAY_KOR[fdt_base.weekday()]
-                    date_str = f"{month:02d}.{da:02d}({dow})"
-                except:
-                    continue
-
-                if 'endGame' in cls:
-                    a_tag = soup.find('a', href=True)
-                    if not a_tag: continue
-                    href = a_tag['href']
-                    gm = re.search(r'gameId=(\d{8})([A-Z]{2})([A-Z]{2})\d', href)
-                    if not gm: continue
-                    away_code, home_code = gm.group(2), gm.group(3)
-                    is_home = home_code == 'HT'
-                    opp_code = away_code if is_home else home_code
-                    b_tag = soup.find('b')
-                    if not b_tag: continue
-                    score_txt = b_tag.get_text(strip=True)
-                    sm = re.match(r'(\d+)\s*:\s*(\d+)', score_txt)
-                    if not sm: continue
-                    s1, s2 = int(sm.group(1)), int(sm.group(2))
-                    ks  = s2 if is_home else s1
-                    os_ = s1 if is_home else s2
-                    eng2kor = {'HT':'KIA','LG':'LG','SS':'삼성','HH':'한화',
-                               'SK':'SSG','NC':'NC','KT':'KT','LT':'롯데','OB':'두산','WO':'키움'}
-                    opp_short = eng2kor.get(opp_code, opp_code)
-                    vt = '홈' if is_home else '원정'
-                    if any(g2['date']==date_str and g2['opp']==f"vs {opp_short}" for g2 in games):
-                        continue
-                    games.append({"date":date_str,"opp":f"vs {opp_short}",
-                                  "score":f"{ks}-{os_}",
-                                  "result":'win' if ks>os_ else('lose' if ks<os_ else 'draw'),
-                                  "venue":vt})
-
-                else:
-                    for li in soup.find_all('li'):
-                        if li.get('class'): continue
-                        txt = li.get_text(strip=True)
-                        m2 = re.match(r'(.+?)\s*:\s*(.+?)\s*\[(.+?)\]', txt)
-                        if not m2: continue
-                        team_a, team_b = m2.group(1).strip(), m2.group(2).strip()
-                        stadium = m2.group(3).strip()
-                        if 'KIA' not in (team_a + team_b): continue
-                        is_home = team_b == 'KIA'
-                        opp_short = team_a if is_home else team_b
-                        opp_full  = KOR_FULL.get(opp_short, opp_short)
-                        vt = '홈' if is_home else '원정'
-                        try:
-                            fdt = datetime(year, month, da, 18, 30)
-                            fdt_str = fdt.strftime('%Y-%m-%dT%H:%M:%S')
-                        except:
-                            continue
-                        if any(g2['date']==date_str and g2['opp']==f"vs {opp_short}" for g2 in games):
-                            continue
-                        if next_game_ref[0] is None and fdt >= now:
-                            next_game_ref[0] = {"date":fdt_str,"opponent":opp_full,
-                                                "venue":stadium,"home":is_home}
-                        games.append({"date":date_str,"opp":f"vs {opp_short}",
-                                      "score":"18:30","result":"upcoming",
-                                      "venue":vt,"fullDate":fdt_str})
-                        break
-
-        added = len(games) - before
-        print(f"  월간스케줄({year}{month:02d}): {added}경기 추가")
-        return added > 0
-    except Exception as e:
-        print(f"  월간스케줄 오류: {e}")
-        return False
-
 def get_kia_schedule():
-    """GetScheduleList API로 KIA 경기 수집 (완료+예정, 실제 시간 포함)"""
+    """GetScheduleList API로 KIA 경기 수집 (완료+무승부+예정)"""
     import json as _json
     from bs4 import BeautifulSoup as _BS
     DAY_KOR = ['월','화','수','목','금','토','일']
@@ -354,10 +181,9 @@ def get_kia_schedule():
     now = datetime.now()
     games = []; next_game = None
 
-    # 시즌 누적 실점을 정확히 모으려면 개막월(3월)부터 현재월+1까지 전부 받아야 함
+    # 시즌 누적 실점을 정확히 모으려면 개막월(3월)부터 받기
     months_to_fetch = []
     cy, cm = now.year, now.month
-    # 개막월(3월)부터 현재월까지
     sy, sm = 2026, 3
     y, m = sy, sm
     while (y, m) <= (cy, cm):
@@ -432,23 +258,37 @@ def get_kia_schedule():
                 opp_full  = KOR_FULL.get(opp_short, opp_short)
                 vt = '홈' if is_home else '원정'
 
-                score_spans = soup.select('em span[class]')
-                has_score = any(s.get('class',[''])[0] in ('win','lose') for s in score_spans)
-
+                # 우천취소 체크
                 bigo_all = ' '.join(none_cells)
                 if '취소' in bigo_all or '우천' in bigo_all:
                     continue
 
+                # ── 점수 인식 (수정됨) ──
+                # win/lose/draw 클래스 무관하게, em 안에 숫자가 2개 있으면 종료된 경기
+                em_tags = soup.find_all('em')
+                score_nums = []
+                for em in em_tags:
+                    txt = em.get_text(strip=True)
+                    # em 안의 숫자 추출 (win/lose/draw span 텍스트)
+                    nums_in_em = re.findall(r'\d+', txt)
+                    score_nums.extend(nums_in_em)
+
+                has_score = len(score_nums) >= 2
+
                 if has_score:
-                    nums = [s.get_text(strip=True) for s in score_spans
-                            if s.get_text(strip=True).isdigit()]
-                    if len(nums) < 2: continue
-                    s_away, s_home = int(nums[0]), int(nums[1])
+                    s_away, s_home = int(score_nums[0]), int(score_nums[1])
                     ks  = s_home if is_home else s_away
                     os_ = s_away if is_home else s_home
+                    # 무승부 처리
+                    if ks > os_:
+                        result = 'win'
+                    elif ks < os_:
+                        result = 'lose'
+                    else:
+                        result = 'draw'
                     games.append({"date":date_str,"opp":f"vs {opp_short}",
                                   "score":f"{ks}-{os_}",
-                                  "result":'win' if ks>os_ else('lose' if ks<os_ else 'draw'),
+                                  "result":result,
                                   "venue":vt})
                 else:
                     time_disp = f"{h_:02d}:{m_:02d}"
@@ -668,10 +508,7 @@ def build_html(standings, games, next_game, hitters, pitchers, batters, top_pitc
 # ============================================================
 
 def save_tigers_runs_json(games, output_path="tigers_runs.json"):
-    """
-    이미 수집한 games 리스트에서 KIA 실점을 추출해 JSON 저장.
-    games 형식: [{"date":"04.21(화)","opp":"vs SSG","score":"5-3","result":"win","venue":"홈"}, ...]
-    """
+    """이미 수집한 games 리스트에서 KIA 실점을 추출해 JSON 저장."""
     KST = timezone(timedelta(hours=9))
     now_iso = datetime.now(KST).replace(microsecond=0).isoformat()
 
@@ -745,7 +582,6 @@ if __name__=="__main__":
     top_pitchers= get_top_pitchers()
     build_html(standings, games, next_game, hitters, pitchers, batters, top_pitchers)
 
-    # 시즌 누적 실점 JSON 생성 (러닝 트래커용)
     try:
         save_tigers_runs_json(games, "tigers_runs.json")
     except Exception as e:
