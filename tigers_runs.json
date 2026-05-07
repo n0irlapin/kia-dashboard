@@ -1,8 +1,8 @@
 {
   "season": "2026",
-  "updated_at": "2026-05-07T11:28:58+09:00",
-  "total_runs_allowed": 160,
-  "games_played": 33,
+  "updated_at": "2026-05-07T23:33:56+09:00",
+  "total_runs_allowed": 171,
+  "games_played": 34,
   "games": [
     {
       "date": "2026-03-28",
@@ -266,6 +266,14 @@
       "home_away": "H",
       "runs_scored": 2,
       "runs_allowed": 7,
+      "status": "END"
+    },
+    {
+      "date": "2026-05-07",
+      "opp": "한화",
+      "home_away": "H",
+      "runs_scored": 8,
+      "runs_allowed": 11,
       "status": "END"
     }
   ]
