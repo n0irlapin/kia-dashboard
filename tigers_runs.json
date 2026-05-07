@@ -1,8 +1,8 @@
 {
   "season": "2026",
-  "updated_at": "2026-04-27T17:47:16+09:00",
-  "total_runs_allowed": 120,
-  "games_played": 25,
+  "updated_at": "2026-05-07T11:28:58+09:00",
+  "total_runs_allowed": 160,
+  "games_played": 33,
   "games": [
     {
       "date": "2026-03-28",
@@ -202,6 +202,70 @@
       "home_away": "H",
       "runs_scored": 5,
       "runs_allowed": 5,
+      "status": "END"
+    },
+    {
+      "date": "2026-04-28",
+      "opp": "NC",
+      "home_away": "A",
+      "runs_scored": 4,
+      "runs_allowed": 5,
+      "status": "END"
+    },
+    {
+      "date": "2026-04-29",
+      "opp": "NC",
+      "home_away": "A",
+      "runs_scored": 9,
+      "runs_allowed": 4,
+      "status": "END"
+    },
+    {
+      "date": "2026-04-30",
+      "opp": "NC",
+      "home_away": "A",
+      "runs_scored": 2,
+      "runs_allowed": 7,
+      "status": "END"
+    },
+    {
+      "date": "2026-05-01",
+      "opp": "KT",
+      "home_away": "H",
+      "runs_scored": 3,
+      "runs_allowed": 4,
+      "status": "END"
+    },
+    {
+      "date": "2026-05-02",
+      "opp": "KT",
+      "home_away": "H",
+      "runs_scored": 6,
+      "runs_allowed": 0,
+      "status": "END"
+    },
+    {
+      "date": "2026-05-03",
+      "opp": "KT",
+      "home_away": "H",
+      "runs_scored": 4,
+      "runs_allowed": 6,
+      "status": "END"
+    },
+    {
+      "date": "2026-05-05",
+      "opp": "한화",
+      "home_away": "H",
+      "runs_scored": 12,
+      "runs_allowed": 7,
+      "status": "END"
+    },
+    {
+      "date": "2026-05-06",
+      "opp": "한화",
+      "home_away": "H",
+      "runs_scored": 2,
+      "runs_allowed": 7,
       "status": "END"
     }
   ]
