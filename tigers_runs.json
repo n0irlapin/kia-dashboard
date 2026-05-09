@@ -1,8 +1,8 @@
 {
   "season": "2026",
-  "updated_at": "2026-05-08T23:06:14+09:00",
-  "total_runs_allowed": 171,
-  "games_played": 35,
+  "updated_at": "2026-05-09T22:41:19+09:00",
+  "total_runs_allowed": 174,
+  "games_played": 36,
   "games": [
     {
       "date": "2026-03-28",
@@ -280,8 +280,16 @@
       "date": "2026-05-08",
       "opp": "롯데",
       "home_away": "A",
-      "runs_scored": 0,
-      "runs_allowed": 0,
+      "runs_scored": 8,
+      "runs_allowed": 2,
+      "status": "END"
+    },
+    {
+      "date": "2026-05-09",
+      "opp": "롯데",
+      "home_away": "A",
+      "runs_scored": 3,
+      "runs_allowed": 1,
       "status": "END"
     }
   ]
