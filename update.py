@@ -393,7 +393,7 @@ def build_html(standings, games, next_game, hitters, pitchers, batters, top_pitc
         if ks: html=replace_in_regular(html,'kiaStats',json.dumps(ks,ensure_ascii=False))
 
     if games:
-        done=[g for g in games if g['result']!='upcoming'][-10:]
+        done=[g for g in games if g['result']!='upcoming'][-7:]
         upcoming=[g for g in games if g['result']=='upcoming'][:3]
         html=replace_in_regular(html,'recentGames',json.dumps(done+upcoming,ensure_ascii=False))
     if next_game:
