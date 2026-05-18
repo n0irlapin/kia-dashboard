@@ -365,7 +365,7 @@ def build_html(standings, games, next_game, hitters, pitchers, batters, top_pitc
     if hitters:
         fav_names=['오선우','박재현']
         all_sorted=sorted(hitters.keys(), key=lambda n: -float(hitters[n].get('avg','-').replace('.','') or 0) if hitters[n].get('avg','-')!='-' else 0)
-        main_h=[make_hitter(n,hitters[n]) for n in all_sorted if n not in fav_names][:10]
+        main_h=[make_hitter(n,hitters[n]) for n in all_sorted][:10]
         html=replace_in_regular(html,'kiaHitters',json.dumps(main_h,ensure_ascii=False))
         fav_h=[]
         for name in fav_names:
@@ -381,7 +381,7 @@ def build_html(standings, games, next_game, hitters, pitchers, batters, top_pitc
             try: return float(pitchers[n].get('era','99'))
             except: return 99.0
         all_sorted=sorted(pitchers.keys(), key=era_key)
-        main_p=[make_pitcher(n,pitchers[n]) for n in all_sorted if n not in fav_names][:10]
+        main_p=[make_pitcher(n,pitchers[n]) for n in all_sorted][:10]
         html=replace_in_regular(html,'kiaPitchers',json.dumps(main_p,ensure_ascii=False))
         fav_p=[]
         for name in fav_names:
