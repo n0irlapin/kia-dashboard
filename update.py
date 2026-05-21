@@ -70,6 +70,96 @@ def safe_avg(s):
         return f".{int(f*1000):03d}" if f < 1 else f"{f:.3f}"
     except: return '-'
 
+def scrape_basicold_pages(base_url, is_hitter=True):
+    """BasicOld에서 KIA 선수 전체 데이터 수집 (모든 페이지)"""
+    result = {}
+    try:
+        res = requests.get(base_url, headers=HEADERS, timeout=15)
+        soup = BeautifulSoup(res.text, "html.parser")
+        vs = soup.find('input', {'id': '__VIEWSTATE'})
+        ev = soup.find('input', {'id': '__EVENTVALIDATION'})
+        viewstate = vs['value'] if vs else ''
+        eventval  = ev['value'] if ev else ''
+
+        def parse_page(s):
+            table = s.select_one("table")
+            if not table: return
+            for row in table.select("tr"):
+                cols = row.select("td")
+                if len(cols) < 5: continue
+                team = cols[2].get_text(strip=True)
+                if team != 'KIA': continue
+                name = cols[1].get_text(strip=True)
+                a = row.select_one("a[href*='playerId']")
+                pid = re.search(r'playerId=(\d+)', a['href']).group(1) if a else ''
+                if is_hitter:
+                    result[name] = {
+                        'pid': pid,
+                        'avg': safe_avg(cols[3].get_text(strip=True)),
+                        'pa':  safe_int(cols[5].get_text(strip=True)),
+                        'ab':  safe_int(cols[6].get_text(strip=True)),
+                        'h':   safe_int(cols[7].get_text(strip=True)),
+                        'hr':  safe_int(cols[10].get_text(strip=True)) if len(cols)>10 else 0,
+                        'rbi': safe_int(cols[11].get_text(strip=True)) if len(cols)>11 else 0,
+                        'bb':  safe_int(cols[14].get_text(strip=True)) if len(cols)>14 else 0,
+                        'so':  safe_int(cols[16].get_text(strip=True)) if len(cols)>16 else 0,
+                        'r':   0, 'obp':'-', 'slg':'-', 'ops':'-',
+                    }
+                else:
+                    ip = cols[13].get_text(strip=True) if len(cols)>13 else '0'
+                    h  = safe_int(cols[14].get_text(strip=True)) if len(cols)>14 else 0
+                    bb = safe_int(cols[16].get_text(strip=True)) if len(cols)>16 else 0
+                    try:
+                        ip_f = float(ip.replace(' 1/3','.33').replace(' 2/3','.67'))
+                        whip = f"{(h+bb)/ip_f:.2f}" if ip_f > 0 else '-'
+                    except: whip = '-'
+                    result[name] = {
+                        'pid': pid,
+                        'era': cols[3].get_text(strip=True) or '-',
+                        'w':   safe_int(cols[7].get_text(strip=True)) if len(cols)>7 else 0,
+                        'l':   safe_int(cols[8].get_text(strip=True)) if len(cols)>8 else 0,
+                        'sv':  safe_int(cols[9].get_text(strip=True)) if len(cols)>9 else 0,
+                        'hld': safe_int(cols[10].get_text(strip=True)) if len(cols)>10 else 0,
+                        'ip':  ip,
+                        'h':   h, 'bb': bb,
+                        'k':   safe_int(cols[18].get_text(strip=True)) if len(cols)>18 else 0,
+                        'whip': whip,
+                    }
+
+        parse_page(soup)
+
+        # 페이지 수 확인
+        max_page = 1
+        for a in soup.find_all(href=True):
+            m = re.search(r'btnNo(\d+)', a.get('href',''))
+            if m: max_page = max(max_page, int(m.group(1)))
+        for tag in soup.find_all(onclick=True):
+            m = re.search(r'btnNo(\d+)', tag.get('onclick',''))
+            if m: max_page = max(max_page, int(m.group(1)))
+
+        for page in range(2, max_page+1):
+            try:
+                r2 = requests.post(base_url,
+                    headers={**HEADERS, 'Content-Type':'application/x-www-form-urlencoded'},
+                    data={
+                        '__VIEWSTATE': viewstate,
+                        '__EVENTVALIDATION': eventval,
+                        '__EVENTTARGET': f'ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ucPager$btnNo{page}',
+                        '__EVENTARGUMENT': '',
+                    }, timeout=15)
+                s2 = BeautifulSoup(r2.text, 'html.parser')
+                parse_page(s2)
+                vs2 = s2.find('input', {'id':'__VIEWSTATE'})
+                ev2 = s2.find('input', {'id':'__EVENTVALIDATION'})
+                if vs2: viewstate = vs2['value']
+                if ev2: eventval  = ev2['value']
+            except Exception as e:
+                print(f"  페이지{page} 오류: {e}"); break
+
+    except Exception as e:
+        print(f"  scrape 오류: {e}")
+    return result
+
 def get_jersey_num(soup):
     for li in soup.find_all('li'):
         m = re.search(r'등번호:No\.(\d+)', li.get_text(strip=True))
@@ -223,7 +313,7 @@ def get_kia_schedule():
                 score_nums = []
                 for em in soup.find_all('em'):
                     score_nums.extend(re.findall(r'\d+', em.get_text(strip=True)))
-                if len(score_nums) >= 2:
+                if len(score_nums) >= 2 and fdt < now:
                     s_away, s_home = int(score_nums[0]), int(score_nums[1])
                     ks = s_home if is_home else s_away
                     os_ = s_away if is_home else s_home
