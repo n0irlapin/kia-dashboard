@@ -1,8 +1,8 @@
 {
   "season": "2026",
-  "updated_at": "2026-05-30T22:55:59+09:00",
-  "total_runs_allowed": 236,
-  "games_played": 52,
+  "updated_at": "2026-05-31T23:00:53+09:00",
+  "total_runs_allowed": 239,
+  "games_played": 53,
   "games": [
     {
       "date": "2026-03-28",
@@ -418,6 +418,14 @@
       "home_away": "A",
       "runs_scored": 2,
       "runs_allowed": 12,
+      "status": "END"
+    },
+    {
+      "date": "2026-05-30",
+      "opp": "LG",
+      "home_away": "A",
+      "runs_scored": 1,
+      "runs_allowed": 3,
       "status": "END"
     }
   ]
