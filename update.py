@@ -58,7 +58,6 @@ KIA_PITCHER_IDS = {
     '조상우': '63342', '김범수': '65769', '김기훈': '69620', '정해영': '50662',
     '김시훈': '68928', '전상현': '66609', '홍민규': '55267', '황동하': '52641',
 }
-SEASON_OPEN = "2026-03-28" 
 
 def safe_int(s):
     try: return int(float(str(s).strip()) if s else 0)
@@ -246,13 +245,15 @@ def get_standings():
 def get_kia_schedule():
     import json as _json
     from bs4 import BeautifulSoup as _BS
+    from datetime import timezone, timedelta
+    KST = timezone(timedelta(hours=9))
     DAY_KOR = ['월','화','수','목','금','토','일']
     KOR_FULL = {
         'KIA':'KIA 타이거즈','LG':'LG 트윈스','삼성':'삼성 라이온즈','한화':'한화 이글스',
         'SSG':'SSG 랜더스','NC':'NC 다이노스','KT':'KT 위즈','롯데':'롯데 자이언츠',
         '두산':'두산 베어스','키움':'키움 히어로즈'
     }
-    now = datetime.now()
+    now = datetime.now(KST).replace(tzinfo=None)
     games = []; next_game = None
     months_to_fetch = []
     cy, cm = now.year, now.month
@@ -490,14 +491,9 @@ def build_html(standings, games, next_game, hitters, pitchers, batters, top_pitc
     if hitters:
         fav_names=['오선우','박재현']
         all_sorted=sorted(hitters.keys(), key=lambda n: -float(hitters[n].get('avg','-').replace('.','') or 0) if hitters[n].get('avg','-')!='-' else 0)
-        main_h=[make_hitter(n,hitters[n]) for n in all_sorted][:10]
+        main_h=[make_hitter(n,hitters[n]) for n in all_sorted if n not in fav_names]
+        fav_h =[make_hitter(n,hitters[n]) for n in fav_names if n in hitters]
         html=replace_in_regular(html,'kiaHitters',json.dumps(main_h,ensure_ascii=False))
-        fav_h=[]
-        for name in fav_names:
-            kind, pid = FAV_PLAYER_IDS.get(name, (None, None))
-            if not pid: continue
-            d = fetch_fav_player(name, kind, pid)
-            if d: fav_h.append(make_hitter(name, d))
         html=replace_in_regular(html,'kiaFavHitters',json.dumps(fav_h,ensure_ascii=False))
 
     if pitchers:
@@ -506,14 +502,9 @@ def build_html(standings, games, next_game, hitters, pitchers, batters, top_pitc
             try: return float(pitchers[n].get('era','99'))
             except: return 99.0
         all_sorted=sorted(pitchers.keys(), key=era_key)
-        main_p=[make_pitcher(n,pitchers[n]) for n in all_sorted][:10]
+        main_p=[make_pitcher(n,pitchers[n]) for n in all_sorted if n not in fav_names]
+        fav_p =[make_pitcher(n,pitchers[n]) for n in fav_names if n in pitchers]
         html=replace_in_regular(html,'kiaPitchers',json.dumps(main_p,ensure_ascii=False))
-        fav_p=[]
-        for name in fav_names:
-            kind, pid = FAV_PLAYER_IDS.get(name, (None, None))
-            if not pid: continue
-            d = fetch_fav_player(name, kind, pid)
-            if d: fav_p.append(make_pitcher(name, d))
         html=replace_in_regular(html,'kiaFavPitchers',json.dumps(fav_p,ensure_ascii=False))
 
     if batters:
@@ -572,8 +563,3 @@ if __name__=="__main__":
     batters     = get_top_batters()
     top_pitchers= get_top_pitchers()
     build_html(standings, games, next_game, hitters, pitchers, batters, top_pitchers)
-
-    try:
-        save_tigers_runs_json(games, "tigers_runs.json")
-    except Exception as e:
-        print(f"[tigers_runs] 실패: {e}")
