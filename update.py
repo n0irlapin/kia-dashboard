@@ -28,6 +28,8 @@ PLAYER_INFO = {
     '고종욱':  {'num':'57','pos':'외야수'},   '김규성':  {'num':'14','pos':'내야수'},
     '이창진':  {'num':'8', 'pos':'외야수'},   '박정우':  {'num':'1', 'pos':'외야수'},
     '김태군':  {'num':'42','pos':'포수'},
+    '아데를린':{'num':'-','pos':'내야수'},   '한승연':  {'num':'-','pos':'외야수'},
+    '김민규':  {'num':'37','pos':'외야수'},
     # 투수: 번호, 포지션 (KBO 자동 수집)
     '네일':    {'num':'40','pos':'선발'},     '올러':    {'num':'33','pos':'선발'},
     '양현종':  {'num':'54','pos':'선발'},     '이의리':  {'num':'48','pos':'선발'},
@@ -38,19 +40,20 @@ PLAYER_INFO = {
     '김시훈':  {'num':'61','pos':'불펜'},     '전상현':  {'num':'51','pos':'불펜'},
     '홍민규':  {'num':'67','pos':'불펜'},     '황동하':  {'num':'41','pos':'불펜'},
 }
-FAV_HITTERS = ['오선우','박재현']
+FAV_HITTERS = ['오선우','박재현','김민규']
 FAV_PITCHERS = ['최지민']
 FAV_PLAYER_IDS = {
     '오선우': ('hitter', '69636'),
     '박재현': ('hitter', '55636'),
     '최지민': ('pitcher', '52639'),
+    '김민규': ('hitter', '56637'),
 }
 KIA_HITTER_IDS = {
     '카스트로': '56626', '나성범': '62947', '김선빈': '78603', '김도영': '52605',
     '데일':    '56632', '박민':  '50657', '오선우': '69636', '박재현': '55636',
     '김호령':  '65653', '한준수': '68646', '윤도현': '52667', '박상준': '52634',
     '고종욱':  '61353', '김규성': '66614', '이창진': '64560', '박정우': '67609',
-    '김태군':  '78122', '아데를린': '56613', '한승연': '52628',
+    '김태군':  '78122', '아데를린': '56613', '한승연': '52628', '김민규': '56637',
 }
 KIA_PITCHER_IDS = {
     '네일':   '54640', '올러':   '55633', '양현종': '77637', '이의리': '51648',
@@ -58,6 +61,7 @@ KIA_PITCHER_IDS = {
     '조상우': '63342', '김범수': '65769', '김기훈': '69620', '정해영': '50662',
     '김시훈': '68928', '전상현': '66609', '홍민규': '55267', '황동하': '52641',
 }
+SEASON_OPEN = "2026-03-28" 
 
 def safe_int(s):
     try: return int(float(str(s).strip()) if s else 0)
@@ -223,25 +227,6 @@ def scrape_kia_pitchers():
     print(f"KIA 투수 수집: {len(result)}명")
     return result
 
-def get_standings():
-    try:
-        res=requests.get("https://eng.koreabaseball.com/Standings/TeamStandings.aspx",headers=HEADERS,timeout=15)
-        soup=BeautifulSoup(res.text,"html.parser")
-        rows=soup.select("table")[0].select("tr")[1:]
-        out=[]
-        for row in rows:
-            cols=row.select("td")
-            if len(cols)<8: continue
-            try: rank=int(cols[0].get_text(strip=True))
-            except: continue
-            eng=cols[1].get_text(strip=True).upper()
-            out.append({"rank":rank,"team":TEAM_ENG_KOR.get(eng,eng),
-                        "g":cols[2].get_text(strip=True),"w":cols[3].get_text(strip=True),
-                        "l":cols[4].get_text(strip=True),"pct":cols[6].get_text(strip=True),
-                        "gb":cols[7].get_text(strip=True),"kia":eng=='KIA'})
-        print(f"순위: {len(out)}팀"); return out
-    except Exception as e: print(f"standings error: {e}"); return []
-
 def get_kia_schedule():
     import json as _json
     from bs4 import BeautifulSoup as _BS
@@ -334,6 +319,85 @@ def get_kia_schedule():
     upcoming = [g for g in games if g.get('result')=='upcoming']
     print(f"KIA 경기: {len(games)}경기, 예정: {len(upcoming)}경기")
     return games, next_game
+
+def get_standings():
+    try:
+        res=requests.get("https://eng.koreabaseball.com/Standings/TeamStandings.aspx",headers=HEADERS,timeout=15)
+        soup=BeautifulSoup(res.text,"html.parser")
+        rows=soup.select("table")[0].select("tr")[1:]
+        out=[]
+        for row in rows:
+            cols=row.select("td")
+            if len(cols)<8: continue
+            try: rank=int(cols[0].get_text(strip=True))
+            except: continue
+            eng=cols[1].get_text(strip=True).upper()
+            out.append({"rank":rank,"team":TEAM_ENG_KOR.get(eng,eng),
+                        "g":cols[2].get_text(strip=True),"w":cols[3].get_text(strip=True),
+                        "l":cols[4].get_text(strip=True),"pct":cols[6].get_text(strip=True),
+                        "gb":cols[7].get_text(strip=True),"kia":eng=='KIA'})
+        print(f"순위: {len(out)}팀"); return out
+    except Exception as e: print(f"standings error: {e}"); return []
+
+def get_kia_schedule():
+    try:
+        res=requests.get("https://eng.koreabaseball.com/Schedule/DailySchedule.aspx",headers=HEADERS,timeout=15)
+        soup=BeautifulSoup(res.text,"html.parser")
+        tables=soup.select("table")
+        print(f"  DailySchedule 테이블: {len(tables)}개")
+        if not tables: return [],None
+        games=[]; next_game=None; cur_date=""; now=datetime.now()
+        for row in tables[0].select("tr"):
+            cols=row.select("td")
+            if not cols: continue
+            first=cols[0].get_text(strip=True)
+            if re.match(r'\d{2}\.\d{2}\(\w+\)',first): cur_date=first
+            col_t=[c.get_text(strip=True).upper() for c in cols]
+            col_o=[c.get_text(strip=True) for c in cols]
+            if 'KIA' not in col_t or not cur_date: continue
+            dm=re.match(r'(\d{2})\.(\d{2})\((\w+)\)',cur_date)
+            if not dm: continue
+            mo,da,de=int(dm.group(1)),int(dm.group(2)),dm.group(3)
+            date_str=f"{cur_date[:5]}({DAY_MAP.get(de,'')})"
+            found=False
+            for i,orig in enumerate(col_o):
+                sm=re.match(r'^(\d{1,2}):(\d{1,2})$',orig)
+                if not sm or i==0 or i>=len(col_t)-1: continue
+                away,home=col_t[i-1],col_t[i+1]
+                if away not in VALID_TEAMS or home not in VALID_TEAMS: continue
+                if 'KIA' not in away and 'KIA' not in home: continue
+                as_,hs_=int(sm.group(1)),int(sm.group(2))
+                if 'KIA' in away: ks,os_,oe,vt=as_,hs_,home,'원정'
+                else: ks,os_,oe,vt=hs_,as_,away,'홈'
+                op=TEAM_ENG_KOR.get(oe,oe).split(' ')[0]
+                games.append({"date":date_str,"opp":f"vs {op}","score":f"{ks}-{os_}",
+                              "result":'win' if ks>os_ else('lose' if ks<os_ else 'draw'),"venue":vt})
+                found=True; break
+            if not found:
+                for i,orig in enumerate(col_o):
+                    tm=re.match(r'^(\d{2}):(\d{2})$',orig)
+                    if not tm or i==0 or i>=len(col_t)-1: continue
+                    h_,m_=int(tm.group(1)),int(tm.group(2))
+                    if h_<10 or h_>23: continue
+                    away,home=col_t[i-1],col_t[i+1]
+                    if away not in VALID_TEAMS or home not in VALID_TEAMS: continue
+                    if 'KIA' not in away and 'KIA' not in home: continue
+                    oe=home if 'KIA' in away else away
+                    vt='원정' if 'KIA' in away else '홈'
+                    op_kor=TEAM_ENG_KOR.get(oe,oe)
+                    try:
+                        fdt=datetime(now.year,mo,da,h_,m_)
+                        fdt_str=fdt.strftime('%Y-%m-%dT%H:%M:%S')
+                        if next_game is None and fdt>=now:
+                            next_game={"date":fdt_str,"opponent":op_kor,"venue":"","home":vt=='홈'}
+                        games.append({"date":date_str,"opp":f"vs {op_kor.split(' ')[0]}",
+                                      "score":orig,"result":"upcoming","venue":vt,"fullDate":fdt_str})
+                    except: pass
+                    break
+        upcoming=[g for g in games if g.get('result')=='upcoming']
+        print(f"KIA 경기: {len(games)}경기, 예정: {len(upcoming)}경기")
+        return games, next_game
+    except Exception as e: print(f"schedule error: {e}"); return [],None
 
 def get_top_batters():
     try:
@@ -489,11 +553,16 @@ def build_html(standings, games, next_game, hitters, pitchers, batters, top_pitc
         html=replace_in_regular(html,'nextGame',json.dumps(next_game,ensure_ascii=False))
 
     if hitters:
-        fav_names=['오선우','박재현']
+        fav_names=['오선우','박재현','김민규']
         all_sorted=sorted(hitters.keys(), key=lambda n: -float(hitters[n].get('avg','-').replace('.','') or 0) if hitters[n].get('avg','-')!='-' else 0)
-        main_h=[make_hitter(n,hitters[n]) for n in all_sorted if n not in fav_names]
-        fav_h =[make_hitter(n,hitters[n]) for n in fav_names if n in hitters]
+        main_h=[make_hitter(n,hitters[n]) for n in all_sorted][:10]
         html=replace_in_regular(html,'kiaHitters',json.dumps(main_h,ensure_ascii=False))
+        fav_h=[]
+        for name in fav_names:
+            kind, pid = FAV_PLAYER_IDS.get(name, (None, None))
+            if not pid: continue
+            d = fetch_fav_player(name, kind, pid)
+            if d: fav_h.append(make_hitter(name, d))
         html=replace_in_regular(html,'kiaFavHitters',json.dumps(fav_h,ensure_ascii=False))
 
     if pitchers:
@@ -502,9 +571,14 @@ def build_html(standings, games, next_game, hitters, pitchers, batters, top_pitc
             try: return float(pitchers[n].get('era','99'))
             except: return 99.0
         all_sorted=sorted(pitchers.keys(), key=era_key)
-        main_p=[make_pitcher(n,pitchers[n]) for n in all_sorted if n not in fav_names]
-        fav_p =[make_pitcher(n,pitchers[n]) for n in fav_names if n in pitchers]
+        main_p=[make_pitcher(n,pitchers[n]) for n in all_sorted][:10]
         html=replace_in_regular(html,'kiaPitchers',json.dumps(main_p,ensure_ascii=False))
+        fav_p=[]
+        for name in fav_names:
+            kind, pid = FAV_PLAYER_IDS.get(name, (None, None))
+            if not pid: continue
+            d = fetch_fav_player(name, kind, pid)
+            if d: fav_p.append(make_pitcher(name, d))
         html=replace_in_regular(html,'kiaFavPitchers',json.dumps(fav_p,ensure_ascii=False))
 
     if batters:
