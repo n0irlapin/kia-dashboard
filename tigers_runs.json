@@ -1,8 +1,8 @@
 {
   "season": "2026",
-  "updated_at": "2026-08-13T22:25:24+09:00",
-  "total_runs_allowed": 490,
-  "games_played": 103,
+  "updated_at": "2026-08-14T22:20:03+09:00",
+  "total_runs_allowed": 499,
+  "games_played": 104,
   "games": [
     {
       "date": "2026-03-28",
@@ -823,6 +823,14 @@
     {
       "date": "2026-08-13",
       "opp": "삼성",
+      "home_away": "H",
+      "runs_scored": 8,
+      "runs_allowed": 9,
+      "status": "END"
+    },
+    {
+      "date": "2026-08-14",
+      "opp": "두산",
       "home_away": "H",
       "runs_scored": 0,
       "runs_allowed": 0,
