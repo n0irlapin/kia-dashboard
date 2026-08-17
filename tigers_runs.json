@@ -1,7 +1,7 @@
 {
   "season": "2026",
-  "updated_at": "2026-08-16T21:50:51+09:00",
-  "total_runs_allowed": 510,
+  "updated_at": "2026-08-17T21:55:48+09:00",
+  "total_runs_allowed": 511,
   "games_played": 106,
   "games": [
     {
@@ -848,8 +848,8 @@
       "date": "2026-08-16",
       "opp": "두산",
       "home_away": "H",
-      "runs_scored": 0,
-      "runs_allowed": 0,
+      "runs_scored": 2,
+      "runs_allowed": 1,
       "status": "END"
     }
   ]
