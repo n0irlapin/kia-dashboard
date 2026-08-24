@@ -1,7 +1,7 @@
 {
   "season": "2026",
-  "updated_at": "2026-08-23T21:52:09+09:00",
-  "total_runs_allowed": 527,
+  "updated_at": "2026-08-24T22:01:51+09:00",
+  "total_runs_allowed": 535,
   "games_played": 112,
   "games": [
     {
@@ -896,8 +896,8 @@
       "date": "2026-08-23",
       "opp": "키움",
       "home_away": "A",
-      "runs_scored": 0,
-      "runs_allowed": 0,
+      "runs_scored": 7,
+      "runs_allowed": 8,
       "status": "END"
     }
   ]
