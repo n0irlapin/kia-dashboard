@@ -1,7 +1,7 @@
 {
   "season": "2026",
-  "updated_at": "2026-08-26T22:03:58+09:00",
-  "total_runs_allowed": 540,
+  "updated_at": "2026-08-28T07:07:30+09:00",
+  "total_runs_allowed": 551,
   "games_played": 114,
   "games": [
     {
@@ -912,8 +912,8 @@
       "date": "2026-08-26",
       "opp": "롯데",
       "home_away": "H",
-      "runs_scored": 0,
-      "runs_allowed": 0,
+      "runs_scored": 16,
+      "runs_allowed": 11,
       "status": "END"
     }
   ]
