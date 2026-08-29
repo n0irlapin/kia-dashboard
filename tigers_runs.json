@@ -1,8 +1,8 @@
 {
   "season": "2026",
-  "updated_at": "2026-08-29T07:06:22+09:00",
-  "total_runs_allowed": 551,
-  "games_played": 114,
+  "updated_at": "2026-08-30T01:34:51+09:00",
+  "total_runs_allowed": 552,
+  "games_played": 115,
   "games": [
     {
       "date": "2026-03-28",
@@ -914,6 +914,14 @@
       "home_away": "H",
       "runs_scored": 16,
       "runs_allowed": 11,
+      "status": "END"
+    },
+    {
+      "date": "2026-08-29",
+      "opp": "SSG",
+      "home_away": "H",
+      "runs_scored": 2,
+      "runs_allowed": 1,
       "status": "END"
     }
   ]
