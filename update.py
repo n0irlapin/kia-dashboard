@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import json
 import re
+import time
 from datetime import datetime, timezone, timedelta
 
 HEADERS = {
@@ -28,6 +29,8 @@ PLAYER_INFO = {
     '고종욱':  {'num':'57','pos':'외야수'},   '김규성':  {'num':'14','pos':'내야수'},
     '이창진':  {'num':'8', 'pos':'외야수'},   '박정우':  {'num':'1', 'pos':'외야수'},
     '김태군':  {'num':'42','pos':'포수'},
+    '아데를린':{'num':'-','pos':'내야수'},   '한승연':  {'num':'-','pos':'외야수'},
+    '김민규':  {'num':'37','pos':'외야수'},
     # 투수: 번호, 포지션 (KBO 자동 수집)
     '네일':    {'num':'40','pos':'선발'},     '올러':    {'num':'33','pos':'선발'},
     '양현종':  {'num':'54','pos':'선발'},     '이의리':  {'num':'48','pos':'선발'},
@@ -38,19 +41,21 @@ PLAYER_INFO = {
     '김시훈':  {'num':'61','pos':'불펜'},     '전상현':  {'num':'51','pos':'불펜'},
     '홍민규':  {'num':'67','pos':'불펜'},     '황동하':  {'num':'41','pos':'불펜'},
 }
-FAV_HITTERS = ['오선우','박재현']
+FAV_HITTERS = ['오선우','박재현','김민규']
 FAV_PITCHERS = ['최지민']
 FAV_PLAYER_IDS = {
     '오선우': ('hitter', '69636'),
     '박재현': ('hitter', '55636'),
     '최지민': ('pitcher', '52639'),
+    '김민규': ('hitter', '56637'),
 }
 KIA_HITTER_IDS = {
     '카스트로': '56626', '나성범': '62947', '김선빈': '78603', '김도영': '52605',
     '데일':    '56632', '박민':  '50657', '오선우': '69636', '박재현': '55636',
     '김호령':  '65653', '한준수': '68646', '윤도현': '52667', '박상준': '52634',
     '고종욱':  '61353', '김규성': '66614', '이창진': '64560', '박정우': '67609',
-    '김태군':  '78122',
+    '김태군':  '78122', '아데를린': '56613', '한승연': '52628',
+    '김민규':  '56637',
 }
 KIA_PITCHER_IDS = {
     '네일':   '54640', '올러':   '55633', '양현종': '77637', '이의리': '51648',
@@ -81,7 +86,7 @@ def get_jersey_num(soup):
             return m.group(1)
     return None
 
-def fetch_fav_player(name, kind, pid):
+def _fetch_fav_once(name, kind, pid):
     try:
         path = 'HitterDetail' if kind == 'hitter' else 'PitcherDetail'
         url = f"https://www.koreabaseball.com/Record/Player/{path}/Basic.aspx?playerId={pid}"
@@ -137,12 +142,20 @@ def fetch_fav_player(name, kind, pid):
         print(f"  {name} 스탯 오류: {e}")
         return None
 
+def fetch_fav_player(name, kind, pid):
+    for attempt in range(3):
+        d = _fetch_fav_once(name, kind, pid)
+        if d: return d
+        time.sleep(2)
+    return None
+
 def scrape_kia_hitters():
     result = {}
     for name, pid in KIA_HITTER_IDS.items():
         d = fetch_fav_player(name, 'hitter', pid)
         if d:
             result[name] = d
+        time.sleep(1.5)
     print(f"KIA 타자 수집: {len(result)}명")
     return result
 
@@ -152,6 +165,7 @@ def scrape_kia_pitchers():
         d = fetch_fav_player(name, 'pitcher', pid)
         if d:
             result[name] = d
+        time.sleep(1.5)
     print(f"KIA 투수 수집: {len(result)}명")
     return result
 
@@ -188,7 +202,7 @@ def get_kia_schedule():
         'SSG':'SSG 랜더스','NC':'NC 다이노스','KT':'KT 위즈','롯데':'롯데 자이언츠',
         '두산':'두산 베어스','키움':'키움 히어로즈'
     }
-    now = datetime.now()
+    now = datetime.now(timezone(timedelta(hours=9))).replace(tzinfo=None)
     games = []; next_game = None
 
     # 시즌 누적 데이터를 위해 개막월(3월)부터 받기
@@ -457,13 +471,20 @@ def build_html(standings, games, next_game, hitters, pitchers, batters, top_pitc
         done=[g for g in games if g['result']!='upcoming'][-7:]
         upcoming=[g for g in games if g['result']=='upcoming'][:3]
         html=replace_in_regular(html,'recentGames',json.dumps(done+upcoming,ensure_ascii=False))
+        if not next_game and upcoming:
+            u=upcoming[0]
+            try:
+                op_name=u['opp'].replace('vs ','')
+                full=next((v for k,v in TEAM_ENG_KOR.items() if v.startswith(op_name)),op_name)
+                next_game={"date":u.get('fullDate',''),"opponent":full,"venue":"","home":u.get('venue','')=='홈'}
+            except: pass
     if next_game:
         html=replace_in_regular(html,'nextGame',json.dumps(next_game,ensure_ascii=False))
 
     if hitters:
-        fav_names=['오선우','박재현']
+        fav_names=['오선우','박재현','김민규']
         all_sorted=sorted(hitters.keys(), key=lambda n: -float(hitters[n].get('avg','-').replace('.','') or 0) if hitters[n].get('avg','-')!='-' else 0)
-        main_h=[make_hitter(n,hitters[n]) for n in all_sorted if n not in fav_names][:10]
+        main_h=[make_hitter(n,hitters[n]) for n in all_sorted][:10]
         html=replace_in_regular(html,'kiaHitters',json.dumps(main_h,ensure_ascii=False))
         fav_h=[]
         for name in fav_names:
@@ -479,7 +500,7 @@ def build_html(standings, games, next_game, hitters, pitchers, batters, top_pitc
             try: return float(pitchers[n].get('era','99'))
             except: return 99.0
         all_sorted=sorted(pitchers.keys(), key=era_key)
-        main_p=[make_pitcher(n,pitchers[n]) for n in all_sorted if n not in fav_names][:10]
+        main_p=[make_pitcher(n,pitchers[n]) for n in all_sorted][:10]
         html=replace_in_regular(html,'kiaPitchers',json.dumps(main_p,ensure_ascii=False))
         fav_p=[]
         for name in fav_names:
