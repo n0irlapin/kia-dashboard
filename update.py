@@ -187,7 +187,7 @@ def get_standings():
             eng=cols[1].get_text(strip=True).upper()
             out.append({"rank":rank,"team":TEAM_ENG_KOR.get(eng,eng),
                         "g":cols[2].get_text(strip=True),"w":cols[3].get_text(strip=True),
-                        "l":cols[4].get_text(strip=True),"pct":cols[6].get_text(strip=True),
+                        "l":cols[4].get_text(strip=True),"d":cols[5].get_text(strip=True),"pct":cols[6].get_text(strip=True),
                         "gb":cols[7].get_text(strip=True),"kia":eng=='KIA'})
         print(f"순위: {len(out)}팀"); return out
     except Exception as e: print(f"standings error: {e}"); return []
@@ -311,6 +311,7 @@ def get_kia_schedule():
                                   "result":result,
                                   "venue":vt})
                 else:
+                    if fdt < now: continue   # 시간이 지났는데 점수 없음(미개최) -> 예정 아님
                     time_disp = f"{h_:02d}:{m_:02d}"
                     if next_game is None and fdt >= now:
                         next_game = {"date":fdt_str,"opponent":opp_full,
@@ -406,7 +407,8 @@ def get_kia_stats_from_standings(standings, avg='-', avg_rank='-', era='-', era_
     for t in standings:
         if t.get('kia'):
             w,l=safe_int(t['w']),safe_int(t['l'])
-            return {"rank":f"{t['rank']}위","record":f"{w} / 0 / {l}",
+            d=safe_int(t.get('d',0))
+            return {"rank":f"{t['rank']}위","record":f"{w} / {d} / {l}",
                     "winrate":t['pct'],"avg":avg,"avgRank":avg_rank,
                     "era":era,"eraRank":era_rank,"label":"2026 정규시즌 성적"}
     return None
